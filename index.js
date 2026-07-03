@@ -39,6 +39,8 @@ const UPLOAD_URL    = process.env.UPLOAD_URL || '';
 const CFIP          = process.env.CFIP || 'saas.sin.fan';
 const CFPORT        = parseInt(process.env.CFPORT) || 443;
 const DOWNLOAD_BASE = process.env.DOWNLOAD_BASE || 'https://amd64.ssss.nyc.mn';
+const TG_TTL_MS     = (parseInt(process.env.TG_TTL_MINUTES) || 5) * 60 * 1000;
+const TG_CLEAN_INT  = (parseInt(process.env.TG_CLEAN_INTERVAL) || 30) * 1000;
 
 // 创建运行目录
 if (!fs.existsSync(FILE_PATH)) {
@@ -62,6 +64,57 @@ const SUB_FILE = path.join(FILE_PATH, 'sub.txt');
 const LIST_FILE = path.join(FILE_PATH, 'list.txt');
 const KEY_FILE = path.join(FILE_PATH, 'key.txt');
 const CONFIG_FILE = path.join(FILE_PATH, 'config.json');
+
+// ════════════════════════════════════════════════════════
+//  TG 消息追踪 & 自动删除
+// ════════════════════════════════════════════════════════
+const tgSent = new Map(); // Map<chatId, Map<messageId, timestamp>>
+
+function tgTrack(chatId, messageId) {
+  if (!tgSent.has(chatId)) tgSent.set(chatId, new Map());
+  tgSent.get(chatId).set(messageId, Date.now());
+  console.log('[TG-TRACK] chat:' + chatId + ' msg:' + messageId);
+}
+
+function tgUntrack(chatId, messageId) {
+  const m = tgSent.get(chatId);
+  if (m) { m.delete(messageId); if (m.size === 0) tgSent.delete(chatId); }
+}
+
+function tgCount() {
+  let n = 0;
+  for (const cm of tgSent.values()) n += cm.size;
+  return n;
+}
+
+async function tgDelete(chatId, messageId) {
+  try {
+    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/deleteMessage`, null, {
+      params: { chat_id: chatId, message_id: messageId }
+    });
+    console.log('[TG-DEL] chat:' + chatId + ' msg:' + messageId + ' deleted');
+    return true;
+  } catch (e) {
+    console.log('[TG-DEL] chat:' + chatId + ' msg:' + messageId + ' fail: ' + (e.response?.data?.description || e.message));
+    return false;
+  } finally {
+    tgUntrack(chatId, messageId);
+  }
+}
+
+async function tgCleanup() {
+  const now = Date.now();
+  let ck = 0, dl = 0, fl = 0;
+  for (const [chatId, cm] of tgSent.entries()) {
+    for (const [msgId, ts] of [...cm.entries()]) {
+      ck++;
+      if (now - ts >= TG_TTL_MS) {
+        if (await tgDelete(chatId, msgId)) dl++; else fl++;
+      }
+    }
+  }
+  if (ck > 0) console.log('[TG-CLEAN] ck=' + ck + ' del=' + dl + ' fail=' + fl + ' remain=' + tgCount());
+}
 
 // ── 系统架构检测 ──────────────────────────────────
 function getArch() {
@@ -275,7 +328,7 @@ async function generateNodes() {
   return subTxt;
 }
 
-// ── Telegram 推送 ─────────────────────────────────
+// ── Telegram 推送（含自动删除追踪） ────────────────
 async function sendTG(message, nodeName) {
   if (!BOT_TOKEN || !CHAT_ID) {
     console.log('[TG] BOT_TOKEN or CHAT_ID empty, skip');
@@ -283,13 +336,17 @@ async function sendTG(message, nodeName) {
   }
   try {
     const b64 = Buffer.from(message).toString('base64');
-    // 用 MarkdownV2 格式发送，需要转义特殊字符
     const esc = (s) => s.replace(/[_*[\]()~`>#+=|{}.!-]/g, '\\$&');
     const text = `**${esc(nodeName)} \\- 节点已就绪**\n\`\`\`${b64}\`\`\``;
-    await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, null, {
+    const resp = await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, null, {
       params: { chat_id: CHAT_ID, text, parse_mode: 'MarkdownV2' }
     });
-    console.log('[TG] Message sent');
+    // 追踪这条消息，将在 TG_TTL 后自动删除
+    const msg = resp.data?.result;
+    if (msg && msg.message_id) {
+      tgTrack(msg.chat.id, msg.message_id);
+      console.log('[TG] Sent, will auto-delete in ' + (TG_TTL_MS / 1000 / 60) + ' min');
+    }
   } catch (e) {
     console.error('[TG] Send failed:', e.message);
   }
@@ -367,6 +424,10 @@ async function start() {
   // 等 sing-box 启动，然后生成节点
   await new Promise(r => setTimeout(r, 3000));
   await generateNodes();
+
+  // TG 消息自动清理定时器（每 TG_CLEAN_INT 扫描一次）
+  setInterval(tgCleanup, TG_CLEAN_INT);
+  console.log('[TG] Auto-clean timer started, TTL=' + (TG_TTL_MS / 1000 / 60) + 'min');
 
   // 定时清理
   cleanup();

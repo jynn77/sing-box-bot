@@ -45,6 +45,19 @@ npm start
 | `CFPORT` | `443` | 优选端口 |
 | `FILE_PATH` | `.npm` | 运行目录 |
 | `DOWNLOAD_BASE` | `https://amd64.ssss.nyc.mn` | 下载地址前缀 |
+| `TG_TTL_MINUTES` | `5` | TG 消息自动删除时间（分钟） |
+| `TG_CLEAN_INTERVAL` | `30` | TG 消息清理扫描间隔（秒） |
+
+## TG 消息自动删除
+
+Bot 推送到 Telegram 的节点消息会被自动追踪，默认 **5 分钟后自动删除**。原理：
+
+1. `sendTG()` 发送消息后，从 API 响应中提取 `message_id` 和 `chat_id`
+2. 存入内存追踪表 `Map<chatId, Map<messageId, timestamp>>`
+3. 每 30 秒扫描一次，超时的消息调用 `deleteMessage` 删除
+4. 删除成功/失败都从追踪表中移除，不会重复尝试
+
+可通过 `.env` 中的 `TG_TTL_MINUTES` 调整过期时间。
 
 ## 订阅链接
 
