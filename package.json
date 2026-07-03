@@ -1,0 +1,14 @@
+{
+  "name": "sing-box-bot",
+  "version": "1.0.0",
+  "description": "精简版 sing-box 节点生成器 — 仅 hy2 + reality，端口 10280",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "latest",
+    "dotenv": "latest",
+    "express": "latest"
+  }
+}
