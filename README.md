@@ -1,81 +1,128 @@
 # sing-box-bot
 
-基于 sing-box 的轻量节点生成器。从原 Sing-box-test 项目精简而来：
+精简版 sing-box 节点生成器。仅 **Hysteria2 + VLESS-Reality** 双协议，无多余功能。
 
-**移除**：nezha、argo、vmess、tuic、socks5、anytls、YouTube 检测、自动保活
+- ✅ 自动下载 sing-box 二进制
+- ✅ 生成 TLS 证书 + reality keypair（持久化，重启不变）
+- ✅ UUID 自动生成并持久化
+- ✅ Telegram 推送订阅（点击复制）
+- ✅ komari-agent 监控（可选）
+- ✅ 每日重启（可选）
+- ✅ Python 版 & Node.js 版
 
-**仅保留**：Hysteria2 + VLESS-Reality，共用端口 10280
+---
 
-## 快速开始
+## ⚡ 快速开始
+
+### Python 版
 
 ```bash
-cd sing-box-bot
-npm install
+cd python
+pip install -r requirements.txt
+# 编辑 .env（至少填 NODE_PORT）
 cp .env.example .env
-# 编辑 .env，至少填入 BOT_TOKEN 和 CHAT_ID
-npm start
+python app.py
 ```
 
-## 做了什么
+### Node.js 版
 
-| 步骤 | 说明 |
-|------|------|
-| 下载 | 自动下载对应架构（amd64/arm64）的 sing-box 和 cloudflared |
-| 证书 | 生成自签 TLS 证书（hy2 需要） |
-| 密钥 | 生成 reality keypair |
-| 配置 | 生成 sing-box 配置，hy2 + reality 同端口 10280 |
-| 运行 | 启动 sing-box |
-| 订阅 | 生成 base64 订阅，提供 HTTP 订阅链接 |
-| 推送 | 推送到 Telegram 群组 |
-| 清理 | 90 秒后删除二进制和敏感文件 |
+```bash
+cd node
+npm install
+# 编辑 .env（至少填 NODE_PORT）
+cp .env.example .env
+node index.js
+```
 
-## 环境变量
+---
 
-| 变量 | 默认 | 说明 |
-|------|------|------|
-| `BOT_TOKEN` | — | Telegram Bot Token（填了才推 TG） |
-| `CHAT_ID` | — | Telegram 群组/用户 ID |
-| `NODE_PORT` | `10280` | hy2 + reality 共用端口 |
-| `PORT` | `3000` | HTTP 订阅端口 |
-| `SUB_PATH` | `sub` | 订阅路径 |
-| `UUID` | 自动生成 | 节点 UUID |
-| `NAME` | 自动检测 | 节点名称标识 |
-| `UPLOAD_URL` | — | 订阅自动上传地址 |
-| `CFIP` | `saas.sin.fan` | 优选域名 |
-| `CFPORT` | `443` | 优选端口 |
-| `FILE_PATH` | `.npm` | 运行目录 |
-| `DOWNLOAD_BASE` | `https://amd64.ssss.nyc.mn` | 下载地址前缀 |
-| `TG_TTL_MINUTES` | `5` | TG 消息自动删除时间（分钟） |
-| `TG_CLEAN_INTERVAL` | `30` | TG 消息清理扫描间隔（秒） |
+## 🔧 .env 配置说明
 
-## TG 消息自动删除
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `NODE_PORT` | ✅ | — | hy2 + reality 共用端口 |
+| `BOT_TOKEN` | ❌ | 空 | Telegram Bot Token，填了才推送 |
+| `CHAT_ID` | ❌ | 空 | Telegram 群组/用户 ID |
+| `UUID` | ❌ | 自动生成 | 节点 UUID，首次运行生成并保存，后续复用 |
+| `NAME` | ❌ | 自动检测 | 节点名称标识，默认使用 ISP |
+| `KOMARI_ENABLED` | ❌ | `true` | komari-agent 监控开关 |
+| `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
+| `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
+| `UPLOAD_URL` | ❌ | 空 | 节点自动上传地址 |
+| `AUTO_ACCESS` | ❌ | `false` | 自动保活开关 |
+| `PROJECT_URL` | ❌ | 空 | 自动保活目标 URL |
+| `FILE_PATH` | ❌ | `.cache` | 运行目录 |
+| `PORT` | ❌ | `3000` | HTTP 健康页端口 |
+| `DAILY_RESTART` | ❌ | `false` | 每日重启（24h 后自动退出） |
 
-Bot 推送到 Telegram 的节点消息会被自动追踪，默认 **5 分钟后自动删除**。原理：
+### 最小配置示例
 
-1. `sendTG()` 发送消息后，从 API 响应中提取 `message_id` 和 `chat_id`
-2. 存入内存追踪表 `Map<chatId, Map<messageId, timestamp>>`
-3. 每 30 秒扫描一次，超时的消息调用 `deleteMessage` 删除
-4. 删除成功/失败都从追踪表中移除，不会重复尝试
+只需一行就能跑：
 
-可通过 `.env` 中的 `TG_TTL_MINUTES` 调整过期时间。
+```env
+NODE_PORT=25983
+```
 
-## 订阅链接
+> Telegram 推送、komari 监控都默认不填，需用时再配。
 
-运行后访问 `http://你的IP:3000/sub` 获取 base64 格式订阅。
+### 完整配置示例
 
-## 目录结构
+```env
+NODE_PORT=25983
+BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+CHAT_ID=-1001234567890
+UUID=7bd180e8-1142-4387-93f5-03e8d750a896
+NAME=MyServer
+KOMARI_ENABLED=true
+KOMARI_SERVER=https://your-komari-server.com
+KOMARI_TOKEN=your-token
+UPLOAD_URL=https://merge-sub.com
+AUTO_ACCESS=true
+PROJECT_URL=https://your-project.com
+DAILY_RESTART=true
+```
+
+---
+
+## 📁 目录结构
 
 ```
 sing-box-bot/
-├── index.js        # 主程序
-├── .env            # 环境变量
-├── .env.example    # 配置模板
-├── package.json
-└── .npm/           # 运行目录（自动创建）
-    ├── config.json # sing-box 配置
-    ├── sub.txt     # 订阅文件（base64）
-    ├── list.txt    # 明文节点列表
-    ├── key.txt     # reality 密钥
-    ├── cert.pem    # TLS 证书
-    └── private.key # TLS 私钥
+├── README.md
+├── python/
+│   ├── app.py
+│   ├── requirements.txt
+│   └── .env.example
+└── node/
+    ├── index.js
+    ├── package.json
+    └── .env.example
 ```
+
+## 📋 Telegram 推送格式
+
+```
+✅ 节点已就绪 | DE-Smartnet_Hosting
+🌍 IP: 95.85.234.80
+
+[base64 订阅链接 — 点击即可复制]
+```
+
+## 🛡️ komari-agent
+
+默认开启。需在 `.env` 配置服务器地址和密钥：
+
+```env
+KOMARI_ENABLED=true
+KOMARI_SERVER=https://your-server.com
+KOMARI_TOKEN=your-token
+```
+
+内置 5 分钟进程保活，崩溃自动重启。
+
+## 📝 说明
+
+- hy2 和 reality 共用同一端口（`NODE_PORT`）
+- 首次运行自动生成 UUID 和 keypair，保存在 `.cache/` 目录，重启不变
+- 90 秒后自动删除二进制文件，节省磁盘
+- 控制台输出节点链接，可直接复制使用
