@@ -49,8 +49,6 @@ node index.js
 | `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
 | `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
 | `UPLOAD_URL` | ❌ | 空 | 节点自动上传地址 |
-| `AUTO_ACCESS` | ❌ | `false` | 自动保活开关 |
-| `PROJECT_URL` | ❌ | 空 | 自动保活目标 URL |
 | `FILE_PATH` | ❌ | `.cache` | 运行目录 |
 | `PORT` | ❌ | `3000` | HTTP 健康页端口 |
 | `DAILY_RESTART` | ❌ | `false` | 每日重启（24h 后自动退出） |
@@ -77,8 +75,6 @@ KOMARI_ENABLED=true
 KOMARI_SERVER=https://your-komari-server.com
 KOMARI_TOKEN=your-token
 UPLOAD_URL=https://merge-sub.com
-AUTO_ACCESS=true
-PROJECT_URL=https://your-project.com
 DAILY_RESTART=true
 ```
 

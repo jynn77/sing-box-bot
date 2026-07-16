@@ -15,8 +15,6 @@ const NODE_PORT = process.env.NODE_PORT ? parseInt(process.env.NODE_PORT) : null
 if (!NODE_PORT) { console.error('[FATAL] NODE_PORT is required'); process.exit(1); }
 const UUID = process.env.UUID || loadUUID();
 const UPLOAD_URL = process.env.UPLOAD_URL || '';
-const PROJECT_URL = process.env.PROJECT_URL || '';
-const AUTO_ACCESS = process.env.AUTO_ACCESS === 'true';
 const NAME = process.env.NAME || '';
 const CHAT_ID = process.env.CHAT_ID || '';
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
@@ -200,13 +198,6 @@ async function main() {
         { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
       console.log('[UPLOAD] Nodes uploaded');
     } catch {}
-  }
-  if (AUTO_ACCESS && PROJECT_URL) {
-    try {
-      await axios.post('https://keep.gvrander.eu.org/add-url', { url: PROJECT_URL },
-        { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
-      console.log('[VISIT] Auto access task added');
-    } catch (e) { console.log(`[VISIT] Failed: ${e.message}`); }
   }
 
   // HTTP 健康页（用内置 http 模块，免 express）

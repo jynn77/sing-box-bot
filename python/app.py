@@ -5,8 +5,6 @@ load_dotenv()
 
 # ── 环境变量 ──────────────────────────────────────────
 UPLOAD_URL = os.environ.get('UPLOAD_URL') or ''
-PROJECT_URL = os.environ.get('PROJECT_URL') or ''
-AUTO_ACCESS = (os.environ.get('AUTO_ACCESS') or 'false').lower() == 'true'
 FILE_PATH = os.environ.get('FILE_PATH') or '.cache'
 uuid_file = os.path.join(FILE_PATH, 'uuid.txt')
 UUID = os.environ.get('UUID') or (
@@ -152,12 +150,6 @@ def main():
                           headers={"Content-Type": "application/json"}, timeout=15)
             print('[UPLOAD] Nodes uploaded')
         except: pass
-    if AUTO_ACCESS and PROJECT_URL:
-        try:
-            requests.post('https://keep.gvrander.eu.org/add-url', json={"url": PROJECT_URL},
-                          headers={"Content-Type": "application/json"}, timeout=15)
-            print('[VISIT] Auto access task added')
-        except Exception as e: print(f'[VISIT] Failed: {e}')
 
     # HTTP
     s = HTTPServer(('0.0.0.0', PORT), Handler)
