@@ -22,6 +22,7 @@ const DAILY_RESTART = process.env.DAILY_RESTART === 'true';
 const KOMARI_ENABLED = process.env.KOMARI_ENABLED !== 'false';
 const KOMARI_SERVER = process.env.KOMARI_SERVER || '';
 const KOMARI_TOKEN = process.env.KOMARI_TOKEN || '';
+const PORT = parseInt(process.env.PORT) || 3000;
 
 // ── UUID 持久化 ──────────────────────────────────────
 function loadUUID() {
@@ -133,9 +134,14 @@ async function main() {
   let privateKey, publicKey;
   if (fs.existsSync(keypairPath)) {
     const lines = fs.readFileSync(keypairPath, 'utf8').trim().split('\n');
-    privateKey = lines[0]; publicKey = lines[1];
-    console.log('[KEY] Loaded existing keypair');
-  } else {
+    if (lines.length >= 2) {
+      privateKey = lines[0]; publicKey = lines[1];
+      console.log('[KEY] Loaded existing keypair');
+    } else {
+      fs.unlinkSync(keypairPath);
+    }
+  }
+  if (!privateKey || !publicKey) {
     const kp = sh(`${sbPath} generate reality-keypair`);
     const pm = kp.match(/PrivateKey:\s*(.*)/);
     const pum = kp.match(/PublicKey:\s*(.*)/);
@@ -204,11 +210,11 @@ async function main() {
   http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(`<h2>sing-box-bot running</h2><p>hy2 + reality port: ${NODE_PORT}</p>`);
-  }).listen(process.env.PORT || 3000, () => console.log(`[HTTP] :${process.env.PORT || 3000}`));
+  }).listen(PORT, () => console.log(`[HTTP] :${PORT}`));
 
   // 90s 清理
   setTimeout(() => {
-    for (const f of [configPath, sbPath, komariPath]) { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {} }
+    for (const f of [configPath, sbPath]) { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {} }
     console.clear();
     console.log('[DONE] App is running');
   }, 90000);

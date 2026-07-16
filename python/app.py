@@ -81,11 +81,17 @@ def main():
     if not dl('web', f'{base}/sb'): print('[FATAL] Download failed'); return
 
     # 加载或生成 reality keypair（持久化，重启不变）
+    pk = puk = None
     if os.path.exists(keypair_path):
         with open(keypair_path) as f:
-            pk, puk = f.read().strip().split('\n')[:2]
-        print(f'[KEY] Loaded existing keypair')
-    else:
+            parts = f.read().strip().split('\n')[:2]
+        if len(parts) >= 2:
+            pk, puk = parts[0], parts[1]
+            print(f'[KEY] Loaded existing keypair')
+        else:
+            os.remove(keypair_path)
+            pk = puk = None
+    if not pk or not puk:
         kp = run(f'{web_path} generate reality-keypair')
         pm = re.search(r'PrivateKey:\s*(.*)', kp)
         pum = re.search(r'PublicKey:\s*(.*)', kp)
