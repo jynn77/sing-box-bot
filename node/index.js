@@ -12,7 +12,7 @@ require('dotenv').config();
 // ── 环境变量 ──────────────────────────────────────────
 const FILE_PATH = process.env.FILE_PATH || '.cache';
 const NODE_PORT = process.env.NODE_PORT ? parseInt(process.env.NODE_PORT) : null;
-if (!NODE_PORT) { console.error('[FATAL] NODE_PORT is required'); process.exit(1); }
+if (!NODE_PORT) { process.exit(1); }
 const UUID = process.env.UUID || loadUUID();
 const UPLOAD_URL = process.env.UPLOAD_URL || '';
 const NAME = process.env.NAME || '';
@@ -35,8 +35,7 @@ function saveUUID() {
   if (!fs.existsSync(f)) {
     fs.mkdirSync(FILE_PATH, { recursive: true });
     fs.writeFileSync(f, UUID);
-    console.log(`[UUID] ${UUID} saved`);
-  } else { console.log('[UUID] Loaded from file'); }
+  }
 }
 
 // ── 路径 ──────────────────────────────────────────────
@@ -47,8 +46,7 @@ const komariLog = path.join(FILE_PATH, 'komori.log');
 
 // ── 每日重启 ──────────────────────────────────────────
 if (DAILY_RESTART) {
-  setTimeout(() => { console.log('[DAILY] 24h reached, exiting'); process.exit(0); }, 86400000);
-  console.log('[DAILY] Restart scheduled in 24h');
+  setTimeout(() => { process.exit(0); }, 86400000);
 }
 
 // ── 工具函数 ──────────────────────────────────────────
@@ -72,11 +70,9 @@ async function download(name, url) {
     r.data.pipe(w);
     await new Promise((res, rej) => { w.on('finish', res); w.on('error', rej); });
     fs.chmodSync(fp, 0o775);
-    console.log(`[DL] ${name} downloaded`);
     return true;
   } catch (e) {
     try { fs.unlinkSync(fp); } catch {}
-    console.log(`[DL] ${name} failed: ${e.message}`);
     return false;
   }
 }
@@ -105,18 +101,11 @@ async function getISP() {
 // ── komari-agent ──────────────────────────────────────
 async function runKomari() {
   const arch = getKomariArch();
-  if (!arch) { console.log(`[KOMARI] Unsupported arch: ${os.arch()}, skip`); return; }
+  if (!arch) { return; }
   if (!await download('komori', `https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-${arch}`)) return;
 
   sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`);
   await new Promise(r => setTimeout(r, 2000));
-
-  if (fs.existsSync(komariLog) && fs.statSync(komariLog).size > 0) {
-    const lines = fs.readFileSync(komariLog, 'utf8').split('\n').slice(-3).join('\\n');
-    console.log(`[KOMARI] Started, log: ${komariLog}\n${lines}`);
-  } else {
-    console.log(`[KOMARI] No log yet: ${komariLog}`);
-  }
 }
 
 // ── komari 进程检测 ──────────────────────────────────
@@ -128,13 +117,12 @@ function komariAlive() {
 
 // ── 主流程 ──────────────────────────────────────────
 async function main() {
-  console.log(`=== sing-box-bot (Node.js) === Port: ${NODE_PORT} (hy2 + reality)`);
   if (!fs.existsSync(FILE_PATH)) fs.mkdirSync(FILE_PATH, { recursive: true });
   saveUUID();
 
   const arch = getArch();
   const base = arch === 'arm' ? 'https://arm64.ssss.nyc.mn' : 'https://amd64.ssss.nyc.mn';
-  if (!await download('web', `${base}/sb`)) { console.error('[FATAL] Download failed'); process.exit(1); }
+  if (!await download('web', `${base}/sb`)) { process.exit(1); }
 
   // 加载或生成 reality keypair（持久化，重启不变）
   const keypairPath = path.join(FILE_PATH, 'keypair.txt');
@@ -143,7 +131,6 @@ async function main() {
     const lines = fs.readFileSync(keypairPath, 'utf8').trim().split('\n');
     if (lines.length >= 2) {
       privateKey = lines[0]; publicKey = lines[1];
-      console.log('[KEY] Loaded existing keypair');
     } else {
       fs.unlinkSync(keypairPath);
     }
@@ -152,12 +139,10 @@ async function main() {
     const kp = sh(`${sbPath} generate reality-keypair`);
     const pm = kp.match(/PrivateKey:\s*(.*)/);
     const pum = kp.match(/PublicKey:\s*(.*)/);
-    if (!(pm && pum)) { console.error('[FATAL] Failed to extract keypair'); process.exit(1); }
+    if (!(pm && pum)) { process.exit(1); }
     privateKey = pm[1].trim(); publicKey = pum[1].trim();
     fs.writeFileSync(keypairPath, `${privateKey}\n${publicKey}\n`);
-    console.log('[KEY] Generated and saved');
   }
-  console.log(`Private Key: ${privateKey}\nPublic Key: ${publicKey}`);
 
   sh(`openssl ecparam -genkey -name prime256v1 -out "${FILE_PATH}/private.key"`);
   sh(`openssl req -new -x509 -days 3650 -key "${FILE_PATH}/private.key" -out "${FILE_PATH}/cert.pem" -subj "/CN=bing.com"`);
@@ -174,53 +159,45 @@ async function main() {
     outbounds: [{ type: 'direct', tag: 'direct' }]
   };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  console.log('[CONFIG] Generated');
 
   sh(`nohup ${sbPath} run -c ${configPath} >/dev/null 2>&1 &`);
-  console.log('[SB] sing-box running');
   await new Promise(r => setTimeout(r, 3000));
 
   if (KOMARI_ENABLED) {
-    console.log('[KOMARI] Starting in 5s...'); await new Promise(r => setTimeout(r, 5000)); await runKomari();
+    await new Promise(r => setTimeout(r, 5000)); await runKomari();
     setInterval(() => {
-      if (!komariAlive()) { console.log('[KOMARI] Process not found, restarting...'); sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`); }
+      if (!komariAlive()) { sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`); }
     }, 300000);
-    console.log('[KOMARI] Watchdog started (check every 5min)');
   }
 
   // 生成节点
   const [serverIP, isp] = await Promise.all([getIP(), getISP()]);
   const nodeName = NAME ? `${NAME}-${isp}` : isp;
   const subTxt = `hysteria2://${UUID}@${serverIP}:${NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}\nvless://${UUID}@${serverIP}:${NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=chrome&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
-  console.log(`\n${subTxt}\n[INFO] Port: ${NODE_PORT}`);
 
   if (BOT_TOKEN && CHAT_ID) {
     try {
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, null,
         { params: { chat_id: CHAT_ID, text: `✅ 节点已就绪 | ${nodeName}\n🌍 IP: ${serverIP}\n\n<pre>${Buffer.from(subTxt).toString('base64')}</pre>`, parse_mode: 'HTML' }, timeout: 15000 });
-      console.log('[TG] Sent');
-    } catch (e) { console.log(`[TG] Failed: ${e.message}`); }
+    } catch {}
   }
   if (UPLOAD_URL) {
     try {
       await axios.post(`${UPLOAD_URL}/api/add-nodes`, { nodes: subTxt.split('\n').filter(Boolean) },
         { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
-      console.log('[UPLOAD] Nodes uploaded');
     } catch {}
   }
 
-  // HTTP 健康页（用内置 http 模块，免 express）
+  // HTTP 健康页
   http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/html' });
     res.end(`<h2>sing-box-bot running</h2><p>hy2 + reality port: ${NODE_PORT}</p>`);
-  }).listen(PORT, () => console.log(`[HTTP] :${PORT}`));
+  }).listen(PORT);
 
   // 90s 清理
   setTimeout(() => {
     for (const f of [configPath, sbPath]) { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {} }
-    console.clear();
-    console.log('[DONE] App is running');
   }, 90000);
 }
 
-main().catch(e => { console.error('[FATAL]', e.message); process.exit(1); });
+main().catch(e => { process.exit(1); });
