@@ -119,6 +119,22 @@ async function runKomari() {
   }
 }
 
+// ── komari 进程检测 ──────────────────────────────────
+function komariAlive() {
+  // 1. /proc 直接读（不依赖 pgrep/ps）
+  try {
+    const pids = fs.readdirSync('/proc').filter(x => /^\d+$/.test(x));
+    for (const pid of pids)
+      try { if (fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').includes('komori')) return true; } catch {}
+    return false;
+  } catch {}
+  // 2. pgrep 兜底
+  try { return !!execSync('pgrep -f komori', { encoding: 'utf8', timeout: 5000 }).trim(); } catch {}
+  // 3. ps aux 最后兜底
+  try { return require('child_process').execSync('ps aux', { encoding: 'utf8' }).includes('komori'); } catch {}
+  return false;
+}
+
 // ── 主流程 ──────────────────────────────────────────
 async function main() {
   console.log(`=== sing-box-bot (Node.js) === Port: ${NODE_PORT} (hy2 + reality)`);
@@ -176,11 +192,7 @@ async function main() {
   if (KOMARI_ENABLED) {
     console.log('[KOMARI] Starting in 5s...'); await new Promise(r => setTimeout(r, 5000)); await runKomari();
     setInterval(() => {
-      let running = false;
-      try { running = !!execSync('pgrep -f komori', { encoding: 'utf8', timeout: 5000 }).trim(); } catch {
-        try { running = require('child_process').execSync('ps aux', { encoding: 'utf8' }).includes('komori'); } catch {}
-      }
-      if (!running) { console.log('[KOMARI] Process not found, restarting...'); sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`); }
+      if (!komariAlive()) { console.log('[KOMARI] Process not found, restarting...'); sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`); }
     }, 300000);
     console.log('[KOMARI] Watchdog started (check every 5min)');
   }

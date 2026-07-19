@@ -190,16 +190,26 @@ def run_komari():
         print(f'[KOMARI] No log yet: {komari_log}')
 
 def komari_alive():
+    # 1. /proc 直接读（不依赖 pgrep/ps）
+    try:
+        for pid in os.listdir('/proc'):
+            if pid.isdigit():
+                try:
+                    with open(f'/proc/{pid}/cmdline', 'rb') as f:
+                        if b'komori' in f.read(): return True
+                except: continue
+        return False
+    except: pass
+    # 2. pgrep 兜底
     try:
         subprocess.run(['pgrep', '-f', 'komori'], capture_output=True, check=True, timeout=5)
         return True
-    except:
-        pass
+    except: pass
+    # 3. ps aux 最后兜底
     try:
         r = subprocess.run(['ps', 'aux'], capture_output=True, text=True, timeout=5)
         return 'komori' in r.stdout
-    except:
-        return True
+    except: return True
 
 def komari_watchdog():
     if KOMARI_ENABLED and not komari_alive():
