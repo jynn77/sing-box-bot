@@ -121,17 +121,8 @@ async function runKomari() {
 
 // ── komari 进程检测 ──────────────────────────────────
 function komariAlive() {
-  // 1. /proc 直接读（不依赖 pgrep/ps）
-  try {
-    const pids = fs.readdirSync('/proc').filter(x => /^\d+$/.test(x));
-    for (const pid of pids)
-      try { if (fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').includes('komori')) return true; } catch {}
-    return false;
-  } catch {}
-  // 2. pgrep 兜底
-  try { return !!execSync('pgrep -f komori', { encoding: 'utf8', timeout: 5000 }).trim(); } catch {}
-  // 3. ps aux 最后兜底
-  try { return require('child_process').execSync('ps aux', { encoding: 'utf8' }).includes('komori'); } catch {}
+  try { return !!execSync('pgrep -f komori 2>/dev/null', { encoding: 'utf8', timeout: 5000 }).trim(); } catch {}
+  try { return execSync('ps aux 2>/dev/null', { encoding: 'utf8', timeout: 5000 }).includes('komori'); } catch {}
   return false;
 }
 
