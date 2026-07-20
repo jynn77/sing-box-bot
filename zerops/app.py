@@ -22,6 +22,8 @@ DAILY_RESTART = (os.environ.get('DAILY_RESTART') or 'false').lower() == 'true'
 KOMARI_ENABLED = (os.environ.get('KOMARI_ENABLED') or 'true').lower() != 'false'
 KOMARI_SERVER = os.environ.get('KOMARI_SERVER') or ''
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
+SERVER_ADDR = os.environ.get('SERVER_ADDR') or ''
+SERVER_PORT = os.environ.get('SERVER_PORT') or '443'
 
 # ── 路径 ──────────────────────────────────────────────
 web_path = os.path.join(FILE_PATH, 'web')
@@ -119,18 +121,23 @@ def main():
         time.sleep(5); run_komari()
         threading.Thread(target=komari_watchdog, daemon=True).start()
 
-    # 获取 IP + ISP
-    try: ip = requests.get('http://ipv4.ip.sb', timeout=5).text.strip()
-    except: ip = '127.0.0.1'
-    try: isp = requests.get('https://api.ip.sb/geoip', headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
-    except:
-        try: isp = requests.get('http://ip-api.com/json/', headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
-        except: isp = {}
-    isp_str = f"{isp.get('country_code') or isp.get('countryCode', '')}-{isp.get('isp') or isp.get('org', 'Unknown')}".replace(' ', '_')
+    # 获取 IP + ISP（如果设置了 SERVER_ADDR 则用域名代替 IP）
+    if SERVER_ADDR:
+        ip = SERVER_ADDR
+        isp_str = 'Zerops'
+    else:
+        try: ip = requests.get('http://ipv4.ip.sb', timeout=5).text.strip()
+        except: ip = '127.0.0.1'
+        try: isp = requests.get('https://api.ip.sb/geoip', headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
+        except:
+            try: isp = requests.get('http://ip-api.com/json/', headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
+            except: isp = {}
+        isp_str = f"{isp.get('country_code') or isp.get('countryCode', '')}-{isp.get('isp') or isp.get('org', 'Unknown')}".replace(' ', '_')
 
     nn = f'{NAME}-{isp_str}' if NAME and NAME.strip() else isp_str
-    txt = (f'hysteria2://{UUID}@{ip}:{NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
-           f'\nvless://{UUID}@{ip}:{NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality'
+    sp = SERVER_PORT if SERVER_ADDR else str(NODE_PORT)
+    txt = (f'hysteria2://{UUID}@{ip}:{sp}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
+           f'\nvless://{UUID}@{ip}:{sp}?encryption=none&flow=xtls-rprx-vision&security=reality'
            f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
 
     if BOT_TOKEN and CHAT_ID:
