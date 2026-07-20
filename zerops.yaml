@@ -12,6 +12,8 @@ zerops:
       ports:
         - port: 3000
           httpSupport: true
+        - port: 3001
+          httpSupport: true
       initCommands:
         - python3 -m pip install -r /var/www/zerops/requirements.txt --ignore-installed
       start: python3 zerops/app.py

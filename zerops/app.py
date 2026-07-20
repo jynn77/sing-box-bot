@@ -1,4 +1,5 @@
 import os, re, json, time, uuid, base64, platform, subprocess, threading, requests
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -13,6 +14,7 @@ NODE_PORT_STR = os.environ.get('NODE_PORT')
 if not NODE_PORT_STR:
     exit(1)
 NODE_PORT = int(NODE_PORT_STR)
+PORT = int(os.environ.get('PORT') or '3001')
 NAME = os.environ.get('NAME') or ''
 CHAT_ID = os.environ.get('CHAT_ID') or ''
 BOT_TOKEN = os.environ.get('BOT_TOKEN') or ''
@@ -29,6 +31,15 @@ komari_path = os.path.join(FILE_PATH, 'komori')
 komari_log = os.path.join(FILE_PATH, 'komori.log')
 config_path = os.path.join(FILE_PATH, 'config.json')
 keypair_path = os.path.join(FILE_PATH, 'keypair.txt')
+
+# ── HTTP 处理器 ──────────────────────────────────────
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(f'<h2>sing-box-bot running</h2><p>hy2 + reality port: {NODE_PORT}</p>'.encode())
+    def log_message(self, *a): pass
 
 # ── 工具 ──────────────────────────────────────────────
 def run(cmd):
@@ -139,6 +150,10 @@ def main():
             requests.post(f'{UPLOAD_URL}/api/add-nodes', json={"nodes": [l for l in txt.split("\n") if l.strip()]},
                           headers={"Content-Type": "application/json"}, timeout=15)
         except: pass
+
+    # HTTP 健康页（3001，不影响 sing-box 占 3000）
+    s = HTTPServer(('0.0.0.0', PORT), Handler)
+    threading.Thread(target=s.serve_forever, daemon=True).start()
 
     # 90s 清理
     threading.Timer(90, lambda: (
