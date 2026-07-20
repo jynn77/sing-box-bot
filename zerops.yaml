@@ -13,6 +13,5 @@ zerops:
           httpSupport: true
         - port: 25983
       prepareCommands:
-        - apk add --no-cache openssl
         - python3 -m pip install --ignore-installed -r requirements.txt
       start: python3 python/app.py
