@@ -1,0 +1,17 @@
+zerops:
+  - setup: app
+    build:
+      base: python@latest
+      deployFiles:
+        - python/app.py
+        - python/requirements.txt
+    run:
+      base: python@latest
+      ports:
+        - port: 3000
+          httpSupport: true
+        - port: 25983
+      prepareCommands:
+        - apk add --no-cache openssl
+        - python3 -m pip install --ignore-installed -r requirements.txt
+      start: python3 python/app.py
