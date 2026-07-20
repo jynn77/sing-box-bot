@@ -1,20 +1,19 @@
 zerops:
   - setup: python
     build:
-      base: python@latest
-      os: alpine
+      base: alpine/python@3.12
       deployFiles:
         - zerops/app.py
-        - zerops/requirements.txt
         - .cache/private.key
         - .cache/cert.pem
+      addToRunPrepare:
+        - zerops/requirements.txt
     run:
-      base: python@latest
-      os: alpine
+      base: alpine/python@3.12
       ports:
         - port: 3000
           httpSupport: true
         - port: 25983
       prepareCommands:
-        - python3 -m pip install --ignore-installed -r /var/www/zerops/requirements.txt
+        - python3 -m pip install -r requirements.txt --ignore-installed
       start: python3 zerops/app.py
