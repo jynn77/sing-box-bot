@@ -23,14 +23,13 @@ KOMARI_ENABLED = (os.environ.get('KOMARI_ENABLED') or 'true').lower() != 'false'
 KOMARI_SERVER = os.environ.get('KOMARI_SERVER') or ''
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
 SERVER_ADDR = os.environ.get('SERVER_ADDR') or ''
-SERVER_PORT = os.environ.get('SERVER_PORT') or '443'
+WS_PATH = os.environ.get('WS_PATH') or '/vless'
 
 # ── 路径 ──────────────────────────────────────────────
 web_path = os.path.join(FILE_PATH, 'web')
 komari_path = os.path.join(FILE_PATH, 'komori')
 komari_log = os.path.join(FILE_PATH, 'komori.log')
 config_path = os.path.join(FILE_PATH, 'config.json')
-keypair_path = os.path.join(FILE_PATH, 'keypair.txt')
 
 # ── HTTP 处理器 ──────────────────────────────────────
 class Handler(BaseHTTPRequestHandler):
@@ -38,7 +37,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/html')
         self.end_headers()
-        self.wfile.write(f'<h2>sing-box-bot running</h2><p>hy2 + reality port: {NODE_PORT}</p>'.encode())
+        self.wfile.write(f'<h2>sing-box-bot running</h2><p>vless-ws port: {NODE_PORT}</p>'.encode())
     def log_message(self, *a): pass
 
 # ── 工具 ──────────────────────────────────────────────
@@ -76,41 +75,15 @@ def main():
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
     if not dl('web', f'{base}/sb'): return
 
-    # 加载或生成 reality keypair（持久化，重启不变）
-    pk = puk = None
-    if os.path.exists(keypair_path):
-        with open(keypair_path) as f:
-            parts = f.read().strip().split('\n')[:2]
-        if len(parts) >= 2:
-            pk, puk = parts[0], parts[1]
-        else:
-            os.remove(keypair_path)
-            pk = puk = None
-    if not pk or not puk:
-        kp = run(f'{web_path} generate reality-keypair')
-        pm = re.search(r'PrivateKey:\s*(.*)', kp)
-        pum = re.search(r'PublicKey:\s*(.*)', kp)
-        if not (pm and pum): return
-        pk, puk = pm.group(1).strip(), pum.group(1).strip()
-        with open(keypair_path, 'w') as f: f.write(f'{pk}\n{puk}\n')
-
-    # 生成自签名证书（zerops build 阶段已预生成，跳过）
-    if not os.path.exists(f'{FILE_PATH}/private.key'):
-        run(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"')
-        run(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"')
-
+    # sing-box 配置：vless + WebSocket，TLS 由 zerops 代理层处理
     config = {
         "log": {"disabled": True, "level": "info", "timestamp": True},
-        "inbounds": [
-            {"tag": "hysteria-in", "type": "hysteria2", "listen": "::", "listen_port": NODE_PORT,
-             "users": [{"password": UUID}], "masquerade": "https://bing.com",
-             "tls": {"enabled": True, "alpn": ["h3"],
-                      "certificate_path": f"{FILE_PATH}/cert.pem", "key_path": f"{FILE_PATH}/private.key"}},
-            {"tag": "vless-reality-in", "type": "vless", "listen": "::", "listen_port": NODE_PORT,
-             "users": [{"uuid": UUID, "flow": "xtls-rprx-vision"}],
-             "tls": {"enabled": True, "server_name": "www.iij.ad.jp",
-                      "reality": {"enabled": True, "handshake": {"server": "www.iij.ad.jp", "server_port": 443},
-                                   "private_key": pk, "short_id": [""]}}}],
+        "inbounds": [{
+            "tag": "vless-ws-in", "type": "vless",
+            "listen": "::", "listen_port": NODE_PORT,
+            "users": [{"uuid": UUID}],
+            "transport": {"type": "ws", "path": WS_PATH}
+        }],
         "outbounds": [{"type": "direct", "tag": "direct"}]}
     with open(config_path, 'w') as f: json.dump(config, f, indent=2)
 
@@ -121,7 +94,7 @@ def main():
         time.sleep(5); run_komari()
         threading.Thread(target=komari_watchdog, daemon=True).start()
 
-    # 获取 IP + ISP（如果设置了 SERVER_ADDR 则用域名代替 IP）
+    # 节点链接
     if SERVER_ADDR:
         ip = SERVER_ADDR
         isp_str = 'Zerops'
@@ -135,10 +108,7 @@ def main():
         isp_str = f"{isp.get('country_code') or isp.get('countryCode', '')}-{isp.get('isp') or isp.get('org', 'Unknown')}".replace(' ', '_')
 
     nn = f'{NAME}-{isp_str}' if NAME and NAME.strip() else isp_str
-    sp = SERVER_PORT if SERVER_ADDR else str(NODE_PORT)
-    txt = (f'hysteria2://{UUID}@{ip}:{sp}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
-           f'\nvless://{UUID}@{ip}:{sp}?encryption=none&flow=xtls-rprx-vision&security=reality'
-           f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
+    txt = f'vless://{UUID}@{ip}:443?type=ws&path={WS_PATH}&security=tls&sni={ip}&fp=chrome#{nn}'
 
     if BOT_TOKEN and CHAT_ID:
         try:
@@ -151,7 +121,7 @@ def main():
                           headers={"Content-Type": "application/json"}, timeout=15)
         except: pass
 
-    # HTTP 健康页（3001，不影响 sing-box 占 3000）
+    # HTTP 健康页
     s = HTTPServer(('0.0.0.0', PORT), Handler)
     threading.Thread(target=s.serve_forever, daemon=True).start()
 
