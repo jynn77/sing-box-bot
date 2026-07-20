@@ -1,11 +1,6 @@
 import os, re, json, time, uuid, base64, platform, subprocess, threading, requests
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from dotenv import load_dotenv
-from cryptography import x509
-from cryptography.x509.oid import NameOID
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import ec
-import datetime
 load_dotenv()
 
 # ── 环境变量 ──────────────────────────────────────────
@@ -97,25 +92,10 @@ def main():
         pk, puk = pm.group(1).strip(), pum.group(1).strip()
         with open(keypair_path, 'w') as f: f.write(f'{pk}\n{puk}\n')
 
-    # 生成自签名证书（纯 Python，不依赖 openssl 命令）
-    key = ec.generate_private_key(ec.SECP256R1())
-    sk = x509.CertificateBuilder().subject_name(
-        x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'bing.com')])
-    ).issuer_name(
-        x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, 'bing.com')])
-    ).public_key(key.public_key()).serial_number(
-        x509.random_serial_number()
-    ).not_valid_before(
-        datetime.datetime.utcnow()
-    ).not_valid_after(
-        datetime.datetime.utcnow() + datetime.timedelta(days=3650)
-    ).add_extension(
-        x509.SubjectAlternativeName([x509.DNSName('bing.com')]), critical=False
-    ).sign(key, hashes.SHA256())
-    with open(f'{FILE_PATH}/private.key', 'wb') as f:
-        f.write(key.private_bytes(serialization.Encoding.PEM, serialization.PrivateFormat.TraditionalOpenSSL, serialization.NoEncryption()))
-    with open(f'{FILE_PATH}/cert.pem', 'wb') as f:
-        f.write(sk.public_bytes(serialization.Encoding.PEM))
+# 生成自签名证书（如果已存在则跳过，build 阶段已预生成）
+	    if not os.path.exists(f'{FILE_PATH}/private.key'):
+	        run(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"')
+	        run(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"')
 
     config = {
         "log": {"disabled": True, "level": "info", "timestamp": True},
