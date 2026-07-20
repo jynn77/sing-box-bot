@@ -23,7 +23,6 @@ KOMARI_ENABLED = (os.environ.get('KOMARI_ENABLED') or 'true').lower() != 'false'
 KOMARI_SERVER = os.environ.get('KOMARI_SERVER') or ''
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
 SERVER_ADDR = os.environ.get('SERVER_ADDR') or ''
-WS_PATH = os.environ.get('WS_PATH') or '/vless'
 
 # ── 路径 ──────────────────────────────────────────────
 web_path = os.path.join(FILE_PATH, 'web')
@@ -82,7 +81,17 @@ def main():
             "tag": "vless-ws-in", "type": "vless",
             "listen": "::", "listen_port": NODE_PORT,
             "users": [{"uuid": UUID}],
-            "transport": {"type": "ws", "path": WS_PATH}
+            "transport": {"type": "ws", "path": "/vless"}
+        }, {
+            "tag": "trojan-ws", "type": "trojan",
+            "listen": "::", "listen_port": NODE_PORT,
+            "users": [{"password": UUID}],
+            "transport": {"type": "ws", "path": "/trojan"}
+        }, {
+            "tag": "ss-ws", "type": "shadowsocks",
+            "listen": "::", "listen_port": NODE_PORT,
+            "method": "chacha20-ietf-poly1305", "password": UUID,
+            "transport": {"type": "ws", "path": "/ss"}
         }],
         "outbounds": [{"type": "direct", "tag": "direct"}]}
     with open(config_path, 'w') as f: json.dump(config, f, indent=2)
@@ -108,7 +117,12 @@ def main():
         isp_str = f"{isp.get('country_code') or isp.get('countryCode', '')}-{isp.get('isp') or isp.get('org', 'Unknown')}".replace(' ', '_')
 
     nn = f'{NAME}-{isp_str}' if NAME and NAME.strip() else isp_str
-    txt = f'vless://{UUID}@{ip}:443?type=ws&path={WS_PATH}&security=tls&sni={ip}&fp=chrome#{nn}'
+    ss_ui = base64.urlsafe_b64encode(f'chacha20-ietf-poly1305:{UUID}'.encode()).decode().rstrip('=')
+    txt = '\n'.join(filter(None, [
+        f'vless://{UUID}@{ip}:443?type=ws&path=%2Fvless&security=tls&sni={ip}&fp=chrome#{nn}',
+        f'trojan://{UUID}@{ip}:443?type=ws&path=%2Ftrojan&security=tls&sni={ip}#{nn}',
+        f'ss://{ss_ui}@{ip}:443?type=ws&path=%2Fss&security=tls#{nn}',
+    ]))
 
     if BOT_TOKEN and CHAT_ID:
         try:
