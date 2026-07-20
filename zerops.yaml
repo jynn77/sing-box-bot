@@ -15,7 +15,7 @@ zerops:
       healthCheck:
         exec:
           command: pgrep -f 'web run'
-        failureTimeout: 10
+        failureTimeout: 10s
       initCommands:
         - python3 -m pip install -r /var/www/zerops/requirements.txt --ignore-installed
       start: python3 zerops/app.py
