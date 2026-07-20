@@ -3,12 +3,6 @@ zerops:
     build:
       base: python@latest
       os: alpine
-      prepareCommands:
-        - apk add --no-cache openssl
-      buildCommands:
-        - mkdir -p .cache
-        - openssl ecparam -genkey -name prime256v1 -out .cache/private.key
-        - openssl req -new -x509 -days 3650 -key .cache/private.key -out .cache/cert.pem -subj "/CN=bing.com"
       deployFiles:
         - zerops/app.py
         - zerops/requirements.txt
