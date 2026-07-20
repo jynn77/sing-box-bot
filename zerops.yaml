@@ -7,6 +7,7 @@ zerops:
         - python/requirements.txt
     run:
       base: python@latest
+      os: alpine
       ports:
         - port: 3000
           httpSupport: true
