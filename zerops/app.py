@@ -92,8 +92,10 @@ def main():
         pk, puk = pm.group(1).strip(), pum.group(1).strip()
         with open(keypair_path, 'w') as f: f.write(f'{pk}\n{puk}\n')
 
-    run(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"')
-    run(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"')
+    # 生成自签名证书（zerops build 阶段已预生成，跳过）
+    if not os.path.exists(f'{FILE_PATH}/private.key'):
+        run(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"')
+        run(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"')
 
     config = {
         "log": {"disabled": True, "level": "info", "timestamp": True},

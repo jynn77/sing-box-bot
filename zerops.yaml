@@ -10,8 +10,8 @@ zerops:
         - openssl ecparam -genkey -name prime256v1 -out .cache/private.key
         - openssl req -new -x509 -days 3650 -key .cache/private.key -out .cache/cert.pem -subj "/CN=bing.com"
       deployFiles:
-        - python/app.py
-        - python/requirements.txt
+        - zerops/app.py
+        - zerops/requirements.txt
         - .cache/private.key
         - .cache/cert.pem
     run:
@@ -23,4 +23,4 @@ zerops:
         - port: 25983
       prepareCommands:
         - python3 -m pip install --ignore-installed -r requirements.txt
-      start: python3 python/app.py
+      start: python3 zerops/app.py
