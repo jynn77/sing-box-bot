@@ -16,5 +16,5 @@ zerops:
           httpSupport: true
         - port: 25983
       prepareCommands:
-        - python3 -m pip install --ignore-installed -r requirements.txt
+        - python3 -m pip install --ignore-installed -r /var/www/zerops/requirements.txt
       start: python3 zerops/app.py
