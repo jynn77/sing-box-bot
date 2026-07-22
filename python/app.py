@@ -165,10 +165,10 @@ def main():
     log(f'[HTTP] :{PORT}')
     threading.Thread(target=s.serve_forever, daemon=True).start()
 
-    # 90s 清理
+    # 90s 清理 + 提示
     threading.Timer(90, lambda: (
         [os.remove(f) for f in [config_path, web_path] if os.path.exists(f)],
-        log('[DONE] App is running')
+        print('\033c', end=''), print('[DONE] App is running')
     )).start()
 
     while True: time.sleep(3600)

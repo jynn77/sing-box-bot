@@ -218,10 +218,11 @@ async function main() {
     res.end(`<h2>sing-box-bot running</h2><p>hy2 + reality port: ${NODE_PORT}</p>`);
   }).listen(PORT, () => log(`[HTTP] :${PORT}`));
 
-  // 90s 清理
+  // 90s 清理 + 提示
   setTimeout(() => {
     for (const f of [configPath, sbPath]) { try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch {} }
-    log('[DONE] App is running');
+    console.clear();
+    console.log('[DONE] App is running');
   }, 90000);
 }
 
