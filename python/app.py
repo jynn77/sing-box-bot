@@ -3,6 +3,10 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from dotenv import load_dotenv
 load_dotenv()
 
+LOG_ENABLED = (os.environ.get('LOG_ENABLED') or 'false').lower() == 'true'
+def log(*args):
+    if LOG_ENABLED: print(*args)
+
 # ── 环境变量 ──────────────────────────────────────────
 UPLOAD_URL = os.environ.get('UPLOAD_URL') or ''
 FILE_PATH = os.environ.get('FILE_PATH') or '.cache'
@@ -64,11 +68,16 @@ def dl(name, url):
 
 # ── 主流程 ────────────────────────────────────────────
 def main():
+    log(f'=== sing-box-bot === Port: {NODE_PORT} (hy2 + reality)')
     if not os.path.exists(FILE_PATH): os.makedirs(FILE_PATH)
     if not os.path.exists(uuid_file):
         with open(uuid_file, 'w') as f: f.write(UUID)
+        log('[UUID] Generated and saved')
+    else:
+        log('[UUID] Loaded from file')
     if DAILY_RESTART:
         threading.Timer(86400, lambda: os._exit(0)).start()
+        log('[DAILY] Restart scheduled in 24h')
 
     arch = get_arch()
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
@@ -81,6 +90,7 @@ def main():
             parts = f.read().strip().split('\n')[:2]
         if len(parts) >= 2:
             pk, puk = parts[0], parts[1]
+            log('[KEY] Loaded existing keypair')
         else:
             os.remove(keypair_path)
             pk = puk = None
@@ -91,6 +101,8 @@ def main():
         if not (pm and pum): return
         pk, puk = pm.group(1).strip(), pum.group(1).strip()
         with open(keypair_path, 'w') as f: f.write(f'{pk}\n{puk}\n')
+        log('[KEY] Generated and saved')
+    log(f'Private Key: {pk}\nPublic Key: {puk}')
 
     run(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"')
     run(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"')
@@ -109,13 +121,16 @@ def main():
                                    "private_key": pk, "short_id": [""]}}}],
         "outbounds": [{"type": "direct", "tag": "direct"}]}
     with open(config_path, 'w') as f: json.dump(config, f, indent=2)
+    log('[CONFIG] Generated')
 
     run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
+    log('[SB] sing-box running')
     time.sleep(3)
 
     if KOMARI_ENABLED:
-        time.sleep(5); run_komari()
+        log('[KOMARI] Starting in 5s...'); time.sleep(5); run_komari()
         threading.Thread(target=komari_watchdog, daemon=True).start()
+        log('[KOMARI] Watchdog started (check every 5min)')
 
     # 获取 IP + ISP
     try: ip = requests.get('http://ipv4.ip.sb', timeout=5).text.strip()
@@ -130,25 +145,30 @@ def main():
     txt = (f'hysteria2://{UUID}@{ip}:{NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
            f'\nvless://{UUID}@{ip}:{NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality'
            f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
+    log(f'\n{txt}\n[INFO] Port: {NODE_PORT}')
 
     if BOT_TOKEN and CHAT_ID:
         try:
             requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
                           params={'chat_id': CHAT_ID, 'text': f'✅ 节点已就绪 | {nn}\n🌍 IP: {ip}\n\n<pre>{base64.b64encode(txt.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
-        except: pass
+            log('[TG] Sent')
+        except Exception as e: log(f'[TG] Failed: {e}')
     if UPLOAD_URL:
         try:
             requests.post(f'{UPLOAD_URL}/api/add-nodes', json={"nodes": [l for l in txt.split("\n") if l.strip()]},
                           headers={"Content-Type": "application/json"}, timeout=15)
+            log('[UPLOAD] Nodes uploaded')
         except: pass
 
     # HTTP
     s = HTTPServer(('0.0.0.0', PORT), Handler)
+    log(f'[HTTP] :{PORT}')
     threading.Thread(target=s.serve_forever, daemon=True).start()
 
     # 90s 清理
     threading.Timer(90, lambda: (
-        [os.remove(f) for f in [config_path, web_path] if os.path.exists(f)]
+        [os.remove(f) for f in [config_path, web_path] if os.path.exists(f)],
+        log('[DONE] App is running')
     )).start()
 
     while True: time.sleep(3600)
@@ -165,6 +185,12 @@ def run_komari():
 
     run(f'nohup {komari_path} -e {KOMARI_SERVER} --auto-discovery {KOMARI_TOKEN} >{komari_log} 2>&1 &')
     time.sleep(2)
+    if os.path.exists(komari_log) and os.path.getsize(komari_log) > 0:
+        lines = open(komari_log).read().strip().split('\n')[-3:]
+        log(f'[KOMARI] Started, log: {komari_log}')
+        for l in lines: log(f'  {l}')
+    else:
+        log(f'[KOMARI] No log yet: {komari_log}')
 
 def komari_alive():
     try:
@@ -178,6 +204,7 @@ def komari_alive():
 
 def komari_watchdog():
     if KOMARI_ENABLED and not komari_alive():
+        log('[KOMARI] Process not found, restarting...')
         run_komari()
     threading.Timer(300, komari_watchdog).start()
 
