@@ -2,12 +2,13 @@
 
 精简版 sing-box 节点生成器。仅 **Hysteria2 + VLESS-Reality** 双协议，无多余功能。
 
-- ✅ 自动下载 sing-box 二进制
+- ✅ 自动下载 sing-box 二进制（支持重试）
 - ✅ 生成 TLS 证书 + reality keypair（持久化，重启不变）
 - ✅ UUID 自动生成并持久化
 - ✅ Telegram 推送订阅（点击复制）
 - ✅ komari-agent 监控（可选）
 - ✅ 每日重启（可选）
+- ✅ 日志开关（`LOG_ENABLED=true`）
 - ✅ Python 版 & Node.js 版
 
 ---
@@ -52,6 +53,7 @@ node index.js
 | `FILE_PATH` | ❌ | `.cache` | 运行目录 |
 | `PORT` | ❌ | `3000` | HTTP 健康页端口 |
 | `DAILY_RESTART` | ❌ | `false` | 每日重启（24h 后自动退出） |
+| `LOG_ENABLED` | ❌ | `false` | 日志开关，设 `true` 开启详细输出 |
 
 ### 最小配置示例
 
@@ -61,7 +63,7 @@ node index.js
 NODE_PORT=25983
 ```
 
-> Telegram 推送、komari 监控都默认不填，需用时再配。
+> Telegram 推送、komari 监控、日志都默认不填，需用时再配。
 
 ### 完整配置示例
 
@@ -76,6 +78,7 @@ KOMARI_SERVER=https://your-komari-server.com
 KOMARI_TOKEN=your-token
 UPLOAD_URL=https://merge-sub.com
 DAILY_RESTART=true
+LOG_ENABLED=true
 ```
 
 ---
@@ -122,3 +125,4 @@ KOMARI_TOKEN=your-token
 - 首次运行自动生成 UUID 和 keypair，保存在 `.cache/` 目录，重启不变
 - 90 秒后自动删除二进制文件，节省磁盘
 - 控制台输出节点链接，可直接复制使用
+- 设 `LOG_ENABLED=true` 可查看详细运行日志，方便排查问题
