@@ -148,9 +148,8 @@ async function main() {
     } catch {}
   }
 
-  // 清理二进制
+  // 运行标记
   setTimeout(() => {
-    [cfg, sb].forEach(f => { try { fs.unlinkSync(f); } catch {} });
     console.log('App running');
   }, 90000);
 }
