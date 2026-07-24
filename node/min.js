@@ -152,6 +152,21 @@ async function main() {
   setTimeout(() => {
     console.log('App running');
   }, 90000);
+
+  // 每日清理过期日志（保留 1 天）
+  setInterval(() => {
+    try {
+      const now = Date.now();
+      fs.readdirSync(FP).forEach(f => {
+        if (!f.endsWith('.log')) return;
+        const fp = path.join(FP, f);
+        try { const s = fs.statSync(fp); if (now - s.mtimeMs > 86400000) { fs.unlinkSync(fp); } } catch {}
+      });
+      // 清空 komori.log 内容（不删文件）
+      const kl = path.join(FP, 'komori.log');
+      if (fs.existsSync(kl)) try { fs.truncateSync(kl, 0); } catch {}
+    } catch {}
+  }, 86400000);
 }
 
 main().catch(e => { console.error(e.message); process.exit(1); });
