@@ -121,12 +121,22 @@ async function main() {
   // 启动
   execSync(`nohup ${sb} run -c ${cfg} >/dev/null 2>&1 &`, { timeout: 5000 });
 
-  // 获取 IP
-  let ip = '127.0.0.1';
+  // 获取 IP + ISP
+  let ip = '127.0.0.1', isp = 'Unknown';
   try { ip = (await httpGet('http://ipv4.ip.sb')).trim(); } catch {}
+  try {
+    const d = await httpGet('https://api.ip.sb/geoip');
+    if (d) { const j = JSON.parse(d); isp = `${j.country_code || ''}-${j.isp || 'Unknown'}`.replace(/\s/g, '_'); }
+  } catch {}
+  if (isp === 'Unknown') {
+    try {
+      const d = await httpGet('http://ip-api.com/json/');
+      if (d) { const j = JSON.parse(d); if (j.status === 'success') isp = `${j.countryCode}-${j.org || 'Unknown'}`.replace(/\s/g, '_'); }
+    } catch {}
+  }
 
   // 节点链接
-  const nn = process.env.NAME || 'Node';
+  const nn = process.env.NAME ? `${process.env.NAME}-${isp}` : isp;
   const txt = `hysteria2://${UUID}@${ip}:${NP}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nn}\nvless://${UUID}@${ip}:${NP}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=chrome&pbk=${puk}&type=tcp&headerType=none#${nn}`;
   console.log(`\n${txt}\n[INFO] Port: ${NP}`);
 
