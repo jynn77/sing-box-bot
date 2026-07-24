@@ -68,7 +68,7 @@ const CI = process.env.CHAT_ID || '';
 async function main() {
   console.log('App starting...');
 
-  // 下载 sing-box
+  // 下载 sing-box（用 curl/wget 避免二进制流问题）
   const arch = os.arch().toLowerCase().startsWith('arm') ? 'arm' : 'amd';
   const base = arch === 'arm' ? 'https://arm64.ssss.nyc.mn' : 'https://amd64.ssss.nyc.mn';
   const sb = path.join(FP, 'web');
@@ -76,10 +76,13 @@ async function main() {
   const kp = path.join(FP, 'keypair.txt');
   if (!fs.existsSync(sb)) {
     console.log('[DL] Downloading sing-box...');
-    const r = await httpGet(`${base}/sb`);
-    if (!r) { console.error('[FATAL] Download failed'); process.exit(1); }
-    fs.writeFileSync(sb, r);
-    fs.chmodSync(sb, 0o775);
+    const dlUrl = `${base}/sb`;
+    try {
+      execSync(`curl -sLo "${sb}" "${dlUrl}" 2>/dev/null || wget -qO "${sb}" "${dlUrl}" 2>/dev/null`, { timeout: 60000, stdio: 'pipe' });
+      fs.chmodSync(sb, 0o775);
+    } catch {
+      console.error('[FATAL] Download failed'); process.exit(1);
+    }
   }
 
   // Keypair
