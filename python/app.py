@@ -203,7 +203,7 @@ def main():
     txt = (f'hysteria2://{UUID}@{ip}:{NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
            f'\nvless://{UUID}@{ip}:{NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality'
            f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
-    log(f'\n{txt}\n[INFO] Port: {NODE_PORT}', 0)
+    log(f'\n{txt}\n[INFO] Port: {NODE_PORT}', 1)
 
     # 推送通知
     if BOT_TOKEN and CHAT_ID:

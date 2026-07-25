@@ -237,7 +237,7 @@ async function main() {
   const [serverIP, isp] = await Promise.all([getIP(), getISP()]);
   const nodeName = NAME ? `${NAME}-${isp}` : isp;
   const subTxt = `hysteria2://${UUID}@${serverIP}:${NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}\nvless://${UUID}@${serverIP}:${NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=chrome&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
-  log(`\n${subTxt}\n[INFO] Port: ${NODE_PORT}`, 0);
+  log(`\n${subTxt}\n[INFO] Port: ${NODE_PORT}`, 1);
 
   // 推送通知
   if (BOT_TOKEN && CHAT_ID) {
