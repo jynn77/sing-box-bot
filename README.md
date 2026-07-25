@@ -8,7 +8,7 @@
 - ✅ Telegram 推送订阅（点击复制）
 - ✅ komari-agent 监控（可选）
 - ✅ 每日重启（可选）
-- ✅ 日志级别（`LOG_LEVEL=1` 看信息，`LOG_LEVEL=2` 看调试）
+- ✅ 日志级别（`LOG_LEVEL=1` 看节点，`LOG_LEVEL=2` 看信息，`LOG_LEVEL=3` 看调试）
 - ✅ Python 版 & Node.js 版
 
 ---
@@ -53,7 +53,7 @@ node index.js
 | `FILE_PATH` | ❌ | `.cache` | 运行目录 |
 | `PORT` | ❌ | `3000` | HTTP 健康页端口 |
 | `DAILY_RESTART` | ❌ | `false` | 每日重启（24h 后自动退出） |
-| `LOG_LEVEL` | ❌ | `0` | 日志级别：`0`=节点+错误，`1`=信息，`2`=调试 |
+| `LOG_LEVEL` | ❌ | `0` | 日志级别：`0`=仅错误，`1`=+节点，`2`=+信息，`3`=+调试 |
 
 ### 最小配置示例
 
@@ -125,4 +125,4 @@ KOMARI_TOKEN=your-token
 - 首次运行自动生成 UUID 和 keypair，保存在 `.cache/` 目录，重启不变
 - 90 秒后自动删除二进制文件，节省磁盘
 - 控制台输出节点链接，可直接复制使用
-- 设 `LOG_LEVEL=1` 可查看详细运行日志，`LOG_LEVEL=2` 查看调试信息
+- 设 `LOG_LEVEL=1` 可看节点链接，`LOG_LEVEL=2` 看运行信息，`LOG_LEVEL=3` 看调试详情
