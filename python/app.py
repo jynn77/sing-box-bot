@@ -85,7 +85,7 @@ def dl(name, url, retries=3):
                 for c in r.iter_content(8192):
                     f.write(c)
             os.chmod(fp, 0o775)
-            log(f'[DOWNLOAD] {name} downloaded successfully')
+            log(f'[DOWNLOAD] {name} downloaded successfully', 2)
             return True
         except Exception as e:
             error(f'Download {name} attempt {attempt}/{retries} failed: {e}')
@@ -101,19 +101,19 @@ def dl(name, url, retries=3):
 def main():
     print('App starting...', flush=True)   # 启动标记
 
-    log(f'=== sing-box-bot === Port: {NODE_PORT} (hy2 + reality)')
+    log(f'=== sing-box-bot === Port: {NODE_PORT} (hy2 + reality)', 2)
     if not os.path.exists(FILE_PATH):
         os.makedirs(FILE_PATH)
     if not os.path.exists(uuid_file):
         with open(uuid_file, 'w') as f:
             f.write(UUID)
-        log('[UUID] Generated and saved')
+        log('[UUID] Generated and saved', 2)
     else:
-        log('[UUID] Loaded from file')
+        log('[UUID] Loaded from file', 2)
 
     if DAILY_RESTART:
         threading.Timer(86400, lambda: os._exit(0)).start()
-        log('[DAILY] Restart scheduled in 24h')
+        log('[DAILY] Restart scheduled in 24h', 2)
 
     arch = get_arch()
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
@@ -128,7 +128,7 @@ def main():
             parts = f.read().strip().split('\n')[:2]
         if len(parts) >= 2:
             pk, puk = parts[0], parts[1]
-            log('[KEY] Loaded existing keypair')
+            log('[KEY] Loaded existing keypair', 2)
         else:
             os.remove(keypair_path)
             error('[KEY] Invalid keypair file, regenerating')
@@ -143,8 +143,8 @@ def main():
         pk, puk = pm.group(1).strip(), pum.group(1).strip()
         with open(keypair_path, 'w') as f:
             f.write(f'{pk}\n{puk}\n')
-        log('[KEY] Generated and saved')
-    log(f'Private Key: {pk}\nPublic Key: {puk}')
+        log('[KEY] Generated and saved', 2)
+    log(f'Private Key: {pk}\nPublic Key: {puk}', 3)
 
     # 生成证书（检查 openssl 是否成功）
     if not run_check(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"'):
@@ -170,20 +170,20 @@ def main():
         "outbounds": [{"type": "direct", "tag": "direct"}]}
     with open(config_path, 'w') as f:
         json.dump(config, f, indent=2)
-    log('[CONFIG] Generated')
+    log('[CONFIG] Generated', 2)
 
     # 启动 sing-box（后台运行）
     run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
-    log('[SB] sing-box launched')
+    log('[SB] sing-box launched', 2)
     time.sleep(3)
 
     # 启动 komari（若启用）
     if KOMARI_ENABLED:
-        log('[KOMARI] Starting in 5s...')
+        log('[KOMARI] Starting in 5s...', 2)
         time.sleep(5)
         run_komari()
         threading.Thread(target=komari_watchdog, daemon=True).start()
-        log('[KOMARI] Watchdog started (check every 5min)')
+        log('[KOMARI] Watchdog started (check every 5min)', 2)
 
     # 获取 IP 和 ISP
     try:
@@ -210,20 +210,20 @@ def main():
         try:
             requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
                           params={'chat_id': CHAT_ID, 'text': f'✅ 节点已就绪 | {nn}\n🌍 IP: {ip}\n\n<pre>{base64.b64encode(txt.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
-            log('[TG] Sent')
+            log('[TG] Sent', 2)
         except Exception as e:
             error(f'[TG] Failed: {e}')
     if UPLOAD_URL:
         try:
             requests.post(f'{UPLOAD_URL}/api/add-nodes', json={"nodes": [l for l in txt.split("\n") if l.strip()]},
                           headers={"Content-Type": "application/json"}, timeout=15)
-            log('[UPLOAD] Nodes uploaded')
+            log('[UPLOAD] Nodes uploaded', 2)
         except Exception as e:
             error(f'[UPLOAD] Failed: {e}')
 
     # HTTP 服务（用于健康检查）
     s = HTTPServer(('0.0.0.0', PORT), Handler)
-    log(f'[HTTP] Listening on :{PORT}')
+    log(f'[HTTP] Listening on :{PORT}', 2)
     threading.Thread(target=s.serve_forever, daemon=True).start()
 
     # 90 秒后清理临时文件并输出运行完成标记
@@ -236,7 +236,7 @@ def main():
                     error(f'Cleanup remove {f} failed: {e}')
         print('\033c', end='')        # 清屏
         print('App running')          # 最终运行标记
-        log('[CLEANUP] Temporary files removed, app is fully running')
+        log('[CLEANUP] Temporary files removed, app is fully running', 3)
 
     threading.Timer(90, cleanup_and_announce).start()
 
@@ -264,11 +264,11 @@ def run_komari():
     time.sleep(2)
     if os.path.exists(komari_log) and os.path.getsize(komari_log) > 0:
         lines = open(komari_log).read().strip().split('\n')[-3:]
-        log(f'[KOMARI] Started, log: {komari_log}')
+        log(f'[KOMARI] Started, log: {komari_log}', 3)
         for l in lines:
-            log(f'  {l}')
+            log(f'  {l}', 3)
     else:
-        log(f'[KOMARI] No log yet: {komari_log}')
+        log(f'[KOMARI] No log yet: {komari_log}', 3)
 
 def komari_alive():
     try:
@@ -284,7 +284,7 @@ def komari_alive():
 
 def komari_watchdog():
     if KOMARI_ENABLED and not komari_alive():
-        log('[KOMARI] Process not found, restarting...')
+        log('[KOMARI] Process not found, restarting...', 2)
         run_komari()
     threading.Timer(300, komari_watchdog).start()
 

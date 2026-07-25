@@ -43,8 +43,8 @@ function saveUUID() {
   if (!fs.existsSync(f)) {
     fs.mkdirSync(FILE_PATH, { recursive: true });
     fs.writeFileSync(f, UUID);
-    log(`[UUID] ${UUID} saved`);
-  } else { log('[UUID] Loaded from file'); }
+    log(`[UUID] ${UUID} saved`, 2);
+  } else { log('[UUID] Loaded from file', 2); }
 }
 
 // ── 路径 ──────────────────────────────────────────────
@@ -55,8 +55,8 @@ const komariLog = path.join(FILE_PATH, 'komori.log');
 
 // ── 每日重启 ──────────────────────────────────────────
 if (DAILY_RESTART) {
-  setTimeout(() => { log('[DAILY] 24h reached, exiting'); process.exit(0); }, 86400000);
-  log('[DAILY] Restart scheduled in 24h');
+  setTimeout(() => { log('[DAILY] 24h reached, exiting', 2); process.exit(0); }, 86400000);
+  log('[DAILY] Restart scheduled in 24h', 2);
 }
 
 // ── 工具函数 ──────────────────────────────────────────
@@ -91,7 +91,7 @@ async function download(name, url, retries = 3) {
       r.data.pipe(w);
       await new Promise((res, rej) => { w.on('finish', res); w.on('error', rej); });
       fs.chmodSync(fp, 0o775);
-      log(`[DOWNLOAD] ${name} downloaded successfully`);
+      log(`[DOWNLOAD] ${name} downloaded successfully`, 2);
       return true;
     } catch (e) {
       error(`Download ${name} attempt ${attempt}/${retries} failed: ${e.message}`);
@@ -138,9 +138,9 @@ async function runKomari() {
 
   if (fs.existsSync(komariLog) && fs.statSync(komariLog).size > 0) {
     const lines = fs.readFileSync(komariLog, 'utf8').split('\n').slice(-3).join('\n');
-    log(`[KOMARI] Started, log: ${komariLog}\n${lines}`);
+    log(`[KOMARI] Started, log: ${komariLog}\n${lines}`, 3);
   } else {
-    log(`[KOMARI] No log yet: ${komariLog}`);
+    log(`[KOMARI] No log yet: ${komariLog}`, 3);
   }
 }
 
@@ -155,7 +155,7 @@ function komariAlive() {
 async function main() {
   console.log('App starting...');
 
-  log(`=== sing-box-bot (Node.js) === Port: ${NODE_PORT} (hy2 + reality)`);
+  log(`=== sing-box-bot (Node.js) === Port: ${NODE_PORT} (hy2 + reality)`, 2);
   if (!fs.existsSync(FILE_PATH)) fs.mkdirSync(FILE_PATH, { recursive: true });
   saveUUID();
 
@@ -173,7 +173,7 @@ async function main() {
     const lines = fs.readFileSync(keypairPath, 'utf8').trim().split('\n');
     if (lines.length >= 2) {
       privateKey = lines[0]; publicKey = lines[1];
-      log('[KEY] Loaded existing keypair');
+      log('[KEY] Loaded existing keypair', 2);
     } else {
       fs.unlinkSync(keypairPath);
       error('[KEY] Invalid keypair file, regenerating');
@@ -189,9 +189,9 @@ async function main() {
     }
     privateKey = pm[1].trim(); publicKey = pum[1].trim();
     fs.writeFileSync(keypairPath, `${privateKey}\n${publicKey}\n`);
-    log('[KEY] Generated and saved');
+    log('[KEY] Generated and saved', 2);
   }
-  log(`Private Key: ${privateKey}\nPublic Key: ${publicKey}`);
+  log(`Private Key: ${privateKey}\nPublic Key: ${publicKey}`, 3);
 
   // 生成证书（检查 openssl 是否成功）
   if (!shCheck(`openssl ecparam -genkey -name prime256v1 -out "${FILE_PATH}/private.key"`)) {
@@ -215,22 +215,22 @@ async function main() {
     outbounds: [{ type: 'direct', tag: 'direct' }]
   };
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-  log('[CONFIG] Generated');
+  log('[CONFIG] Generated', 2);
 
   // 启动 sing-box（后台运行）
   sh(`nohup ${sbPath} run -c ${configPath} >/dev/null 2>&1 &`);
-  log('[SB] sing-box launched');
+  log('[SB] sing-box launched', 2);
   await new Promise(r => setTimeout(r, 3000));
 
   // 启动 komari（若启用）
   if (KOMARI_ENABLED) {
-    log('[KOMARI] Starting in 5s...');
+    log('[KOMARI] Starting in 5s...', 2);
     await new Promise(r => setTimeout(r, 5000));
     await runKomari();
     setInterval(() => {
-      if (!komariAlive()) { log('[KOMARI] Process not found, restarting...'); sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`); }
+      if (!komariAlive()) { log('[KOMARI] Process not found, restarting...', 2); sh(`nohup ${komariPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komariLog} 2>&1 &`); }
     }, 300000);
-    log('[KOMARI] Watchdog started (check every 5min)');
+    log('[KOMARI] Watchdog started (check every 5min)', 2);
   }
 
   // 生成节点
@@ -244,14 +244,14 @@ async function main() {
     try {
       await axios.post(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, null,
         { params: { chat_id: CHAT_ID, text: `✅ 节点已就绪 | ${nodeName}\n🌍 IP: ${serverIP}\n\n<pre>${Buffer.from(subTxt).toString('base64')}</pre>`, parse_mode: 'HTML' }, timeout: 15000 });
-      log('[TG] Sent');
+      log('[TG] Sent', 2);
     } catch (e) { error(`[TG] Failed: ${e.message}`); }
   }
   if (UPLOAD_URL) {
     try {
       await axios.post(`${UPLOAD_URL}/api/add-nodes`, { nodes: subTxt.split('\n').filter(Boolean) },
         { headers: { 'Content-Type': 'application/json' }, timeout: 15000 });
-      log('[UPLOAD] Nodes uploaded');
+      log('[UPLOAD] Nodes uploaded', 2);
     } catch (e) { error(`[UPLOAD] Failed: ${e.message}`); }
   }
 
@@ -268,7 +268,7 @@ async function main() {
     }
     console.clear();
     console.log('App running');
-    log('[CLEANUP] Temporary files removed, app is fully running');
+    log('[CLEANUP] Temporary files removed, app is fully running', 3);
   }, 90000);
 }
 
