@@ -10,8 +10,8 @@ const axios = require('axios');
 require('dotenv').config();
 
 // ── 日志配置 ──────────────────────────────────────────
-const LOG_ENABLED = process.env.LOG_ENABLED === 'true';
-function log(...args) { if (LOG_ENABLED) console.log(...args); }
+const LOG_LEVEL = parseInt(process.env.LOG_LEVEL) || 0;
+function log(msg, level = 1) { if (LOG_LEVEL >= level) console.log(msg); }
 function error(...args) { console.error('[ERROR]', ...args); }
 
 // ── 环境变量 ──────────────────────────────────────────
@@ -237,7 +237,7 @@ async function main() {
   const [serverIP, isp] = await Promise.all([getIP(), getISP()]);
   const nodeName = NAME ? `${NAME}-${isp}` : isp;
   const subTxt = `hysteria2://${UUID}@${serverIP}:${NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nodeName}\nvless://${UUID}@${serverIP}:${NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=chrome&pbk=${publicKey}&type=tcp&headerType=none#${nodeName}`;
-  log(`\n${subTxt}\n[INFO] Port: ${NODE_PORT}`);
+  log(`\n${subTxt}\n[INFO] Port: ${NODE_PORT}`, 0);
 
   // 推送通知
   if (BOT_TOKEN && CHAT_ID) {

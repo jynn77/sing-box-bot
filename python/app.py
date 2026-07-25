@@ -3,11 +3,11 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 from dotenv import load_dotenv
 load_dotenv()
 
-# ── 日志配置 ──────────────────────────────────────────
-LOG_ENABLED = (os.environ.get('LOG_ENABLED') or 'false').lower() == 'true'
-def log(*args):
-    if LOG_ENABLED:
-        print(*args, flush=True)
+# ── 日志级别 ──────────────────────────────────────────
+# LOG_LEVEL=0 仅节点链接+错误, 1=信息, 2=调试
+LOG_LEVEL = int(os.environ.get('LOG_LEVEL') or '0')
+def log(msg, level=1):
+    if LOG_LEVEL >= level: print(msg, flush=True)
 
 def error(*args):
     print('[ERROR]', *args, file=sys.stderr, flush=True)
@@ -203,7 +203,7 @@ def main():
     txt = (f'hysteria2://{UUID}@{ip}:{NODE_PORT}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
            f'\nvless://{UUID}@{ip}:{NODE_PORT}?encryption=none&flow=xtls-rprx-vision&security=reality'
            f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
-    log(f'\n{txt}\n[INFO] Port: {NODE_PORT}')
+    log(f'\n{txt}\n[INFO] Port: {NODE_PORT}', 0)
 
     # 推送通知
     if BOT_TOKEN and CHAT_ID:
