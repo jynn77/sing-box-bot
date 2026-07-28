@@ -32,6 +32,9 @@ const ARGO_PORT = process.env.ARGO_PORT || '8001';
 const CFIP = process.env.CFIP || 'saas.sin.fan';
 const CFPORT = process.env.CFPORT || '443';
 const PORT = parseInt(process.env.PORT) || 3000;
+const SUB_PATH = process.env.SUB_PATH || 'sub';
+const DISABLE_ARGO = process.env.DISABLE_ARGO === 'true';
+const SHOW_LOG = process.env.SHOW_LOG !== 'false';
 
 // ── 下载 ────────────────────────────────────────────────
 function dl(url, dest) {
