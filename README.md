@@ -123,7 +123,7 @@ KOMARI_TOKEN=your-token
 
 ## 🌐 Argo 版（Cloudflare Tunnel）
 
-基于 `sbsh` 全能二进制，自带 argo 隧道 + 多协议支持，零依赖。
+基于 `cloudflared` 建立隧道，支持临时隧道（trycloudflare）和固定隧道两种模式。
 
 ### 快速开始
 
@@ -132,6 +132,7 @@ KOMARI_TOKEN=your-token
 node node/min_argo.js
 
 # Python 版
+pip install requests python-dotenv
 python python/app_argo.py
 ```
 
@@ -139,7 +140,6 @@ python python/app_argo.py
 
 | 变量 | 必填 | 默认值 | 说明 |
 |------|------|--------|------|
-| `PORT` | ❌ | `3000` | HTTP 服务端口 + 订阅端口 |
 | `UUID` | ❌ | 自动生成 | 节点 UUID |
 | `NAME` | ❌ | 自动检测 | 节点名称 |
 | `BOT_TOKEN` | ❌ | 空 | Telegram Bot Token |
@@ -148,30 +148,17 @@ python python/app_argo.py
 | `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
 | `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
 | `ARGO_DOMAIN` | ❌ | 空 | 固定隧道域名，留空启用临时隧道 |
-| `ARGO_AUTH` | ❌ | 空 | 固定隧道 token 或 json，留空启用临时隧道 |
-| `ARGO_PORT` | ❌ | `8001` | 固定隧道端口（需与 CF 后台一致） |
-| `CFIP` | ❌ | `saas.sin.fan` | 优选域名或 IP |
-| `CFPORT` | ❌ | `443` | 优选端口 |
-| `DISABLE_ARGO` | ❌ | `false` | 设为 `true` 禁用 argo |
-| `SHOW_LOG` | ❌ | `true` | 是否显示日志 |
-| `SUB_PATH` | ❌ | `sub` | 订阅路径 |
-| `UPLOAD_URL` | ❌ | 空 | 节点上传地址 |
-| `S5_PORT` | ❌ | 空 | SOCKS5 端口 |
-| `HY2_PORT` | ❌ | 空 | Hysteria2 端口 |
-| `TUIC_PORT` | ❌ | 空 | TUIC 端口 |
-| `REALITY_PORT` | ❌ | 空 | Reality 端口 |
-| `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
-| `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
+| `ARGO_TOKEN` | ❌ | 空 | 固定隧道 token，留空启用临时隧道 |
 
 ### 临时隧道（默认）
 
-不设 `ARGO_DOMAIN` 和 `ARGO_AUTH`，自动生成 `https://随机名.trycloudflare.com`。
+不设 `ARGO_DOMAIN` 和 `ARGO_TOKEN`，自动生成 `https://随机名.trycloudflare.com`。
 
 ### 固定隧道
 
 ```env
 ARGO_DOMAIN=你的域名.com
-ARGO_AUTH=你的token或json
+ARGO_TOKEN=你的token
 ```
 
 ### 完整配置示例
@@ -180,9 +167,9 @@ ARGO_AUTH=你的token或json
 UUID=7bd180e8-1142-4387-93f5-03e8d750a896
 NAME=MyServer
 ARGO_DOMAIN=your-domain.com
-ARGO_AUTH=your-token
-CFIP=saas.sin.fan
-CFPORT=443
+ARGO_TOKEN=your-token
+KOMARI_SERVER=https://your-komari-server.com
+KOMARI_TOKEN=your-key
 BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
 CHAT_ID=-1001234567890
 ```
