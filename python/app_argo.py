@@ -1,7 +1,7 @@
 import os, re, json, time, uuid, base64, platform, subprocess, threading, requests, sys
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 
 # ── 环境变量 ──────────────────────────────────────────
 FILE_PATH = os.environ.get('FILE_PATH') or '.cache'
@@ -120,7 +120,7 @@ def main():
     tunnel_url = ''
     if ARGO_TOKEN and ARGO_DOMAIN:
         # 固定隧道
-        print('[ARGO] Starting fixed tunnel...')
+        print(f'[ARGO] Using fixed tunnel: {ARGO_DOMAIN}')
         run(f'nohup {cfd_path} tunnel run --token {ARGO_TOKEN} >{cfd_log} 2>&1 &')
         tunnel_url = f'https://{ARGO_DOMAIN}'
     else:
