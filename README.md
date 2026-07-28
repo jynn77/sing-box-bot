@@ -145,6 +145,8 @@ python python/app_argo.py
 | `BOT_TOKEN` | ❌ | 空 | Telegram Bot Token |
 | `CHAT_ID` | ❌ | 空 | Telegram 群组/用户 ID |
 | `FILE_PATH` | ❌ | `.cache` | 运行目录 |
+| `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
+| `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
 | `ARGO_DOMAIN` | ❌ | 空 | 固定隧道域名，留空启用临时隧道 |
 | `ARGO_AUTH` | ❌ | 空 | 固定隧道 token 或 json，留空启用临时隧道 |
 | `ARGO_PORT` | ❌ | `8001` | 固定隧道端口（需与 CF 后台一致） |
@@ -158,8 +160,8 @@ python python/app_argo.py
 | `HY2_PORT` | ❌ | 空 | Hysteria2 端口 |
 | `TUIC_PORT` | ❌ | 空 | TUIC 端口 |
 | `REALITY_PORT` | ❌ | 空 | Reality 端口 |
-| `NEZHA_SERVER` | ❌ | 空 | 哪吒面板地址 |
-| `NEZHA_KEY` | ❌ | 空 | 哪吒密钥 |
+| `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
+| `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
 
 ### 临时隧道（默认）
 
