@@ -1,6 +1,14 @@
 #!/usr/bin/env python3
 """sing-box-bot (app_argo) — sbsh 全能二进制 + komari"""
-import os, sys, signal, time, stat, subprocess, threading, platform, urllib.request, urllib.error
+import os, sys, signal, time, stat, subprocess, threading, platform, urllib.request, urllib.error, re
+from pathlib import Path
+
+# 从 .env 加载（如果存在）
+_env = Path(__file__).parent / '.env'
+if _env.exists():
+    for l in _env.read_text().split('\n'):
+        m = re.match(r'^\s*([^#=]+)=(.*)', l.strip())
+        if m: os.environ.setdefault(m.group(1).strip(), m.group(2).strip().strip('"\''))
 
 PORT = int(os.environ.get('PORT', 3000))
 FILE_PATH = os.environ.get('FILE_PATH', '.cache')
