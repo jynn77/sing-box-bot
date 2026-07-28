@@ -1,171 +1,62 @@
-import os, re, json, time, uuid, base64, platform, subprocess, threading, requests, sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
-from dotenv import load_dotenv
-load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
+#!/usr/bin/env python3
+"""sing-box-bot (app_argo) — sbsh 全能二进制 + komari"""
+import os, sys, signal, time, stat, subprocess, threading, platform, urllib.request, urllib.error
 
-# ── 环境变量 ──────────────────────────────────────────
-FILE_PATH = os.environ.get('FILE_PATH') or '.cache'
-UUID = os.environ.get('UUID') or (
-    (lambda f: open(f).read().strip() if os.path.exists(f) else None)(os.path.join(FILE_PATH, 'uuid.txt'))
-) or str(uuid.uuid4())
-CHAT_ID = os.environ.get('CHAT_ID') or ''
-BOT_TOKEN = os.environ.get('BOT_TOKEN') or ''
-NAME = os.environ.get('NAME') or ''
-KOMARI_SERVER = os.environ.get('KOMARI_SERVER') or ''
-KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
-ARGO_TOKEN = os.environ.get('ARGO_TOKEN') or ''
-ARGO_DOMAIN = os.environ.get('ARGO_DOMAIN') or ''
-CFIP = os.environ.get('CFIP') or 'saas.sin.fan'
-CFPORT = os.environ.get('CFPORT') or '443'
-
-# ── 路径 ──────────────────────────────────────────────
-sb_path = os.path.join(FILE_PATH, 'web')
-cfd_path = os.path.join(FILE_PATH, 'cfd')
-cfd_log = os.path.join(FILE_PATH, 'cfd.log')
-config_path = os.path.join(FILE_PATH, 'config.json')
-
-# ── HTTP 处理器 ──────────────────────────────────────
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html')
-        self.end_headers()
-        self.wfile.write(b'<h2>sing-box-bot running</h2>')
-    def log_message(self, *a): pass
-
-# ── 工具 ──────────────────────────────────────────────
-def run(cmd):
-    try: r = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=30); return r.stdout + r.stderr
-    except: return ''
+PORT = int(os.environ.get('PORT', 3000))
+FILE_PATH = os.environ.get('FILE_PATH', '.cache')
+UUID = os.environ.get('UUID', '')
+NAME = os.environ.get('NAME', '')
+CHAT_ID = os.environ.get('CHAT_ID', '')
+BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+KOMARI_SERVER = os.environ.get('KOMARI_SERVER', '')
+KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN', '')
+ARGO_DOMAIN = os.environ.get('ARGO_DOMAIN', '')
+ARGO_AUTH = os.environ.get('ARGO_AUTH', '')
+ARGO_PORT = os.environ.get('ARGO_PORT', '8001')
+CFIP = os.environ.get('CFIP', 'saas.sin.fan')
+CFPORT = os.environ.get('CFPORT', '443')
+SUB_PATH = os.environ.get('SUB_PATH', 'sub')
+DISABLE_ARGO = os.environ.get('DISABLE_ARGO', 'false').lower() in ('true', '1')
+SHOW_LOG = os.environ.get('SHOW_LOG', 'true').lower() in ('true', 'yes', '1')
 
 def get_arch():
     a = platform.machine().lower()
-    return 'arm64' if ('arm' in a or 'aarch64' in a) else 'amd64'
+    if a in ('x86_64', 'amd64'): return 'amd64'
+    if a in ('aarch64', 'arm64'): return 'arm64'
+    raise Exception(f'Unsupported arch: {a}')
 
-def dl(name, url, retries=3):
-    fp = os.path.join(FILE_PATH, name)
-    if os.path.exists(fp): return True
-    for attempt in range(1, retries + 1):
-        try:
-            r = requests.get(url, stream=True, timeout=60, headers={'User-Agent': 'Mozilla/5.0'})
-            r.raise_for_status()
-            with open(fp, 'wb') as f:
-                for c in r.iter_content(8192): f.write(c)
-            os.chmod(fp, 0o775)
-            return True
-        except:
-            try: os.remove(fp)
-            except: pass
-            if attempt < retries: time.sleep(5)
-    return False
-
-# ── 主流程 ────────────────────────────────────────────
-def main():
-    print('App starting...')
-    os.makedirs(FILE_PATH, exist_ok=True)
-
-    # UUID 持久化
-    uf = os.path.join(FILE_PATH, 'uuid.txt')
-    if not os.path.exists(uf):
-        with open(uf, 'w') as f: f.write(UUID)
-
-    # 下载 sing-box + cloudflared
-    arch = get_arch()
-    if not dl('web', f'https://{arch}.ssss.nyc.mn/sb'): print('[FATAL] sing-box download failed'); return
-    if not dl('cfd', f'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-{arch}'): print('[FATAL] cloudflared download failed'); return
-
-    # 配置（VMESS + WebSocket，适合走 CF 隧道）
-    with open(config_path, 'w') as f:
-        json.dump({
-            "log": {"disabled": True},
-            "inbounds": [{
-                "tag": "vmess-ws", "type": "vmess", "listen": "::", "listen_port": 3001,
-                "users": [{"uuid": UUID, "alterId": 0}],
-                "transport": {"type": "ws", "path": "/vmess-argo"}
-            }],
-            "outbounds": [{"type": "direct", "tag": "direct"}]
-        }, f, indent=2)
-
-    # 启动 sing-box
-    run(f'nohup {sb_path} run -c {config_path} >/dev/null 2>&1 &')
-    print('[SB] sing-box started')
-    time.sleep(3)
-
-    # ── Cloudflare Tunnel ──────────────────────────────
-    tunnel_host = ''
-    if ARGO_TOKEN and ARGO_DOMAIN:
-        print(f'[ARGO] Using fixed tunnel: {ARGO_DOMAIN}')
-        run(f'nohup {cfd_path} tunnel run --token {ARGO_TOKEN} >{cfd_log} 2>&1 &')
-        tunnel_host = ARGO_DOMAIN
-    else:
-        print('[ARGO] Starting temporary tunnel...')
-        run(f'nohup {cfd_path} tunnel --url http://localhost:3001 >{cfd_log} 2>&1 &')
-        for _ in range(30):
-            time.sleep(1)
-            try:
-                with open(cfd_log) as f:
-                    m = re.search(r'https://([a-zA-Z0-9-]+\.trycloudflare\.com)', f.read())
-                    if m: tunnel_host = m.group(1); break
-            except: pass
-        if not tunnel_host:
-            print('[FATAL] Failed to get tunnel URL')
-            return
-    print(f'[ARGO] Tunnel: {tunnel_host}')
-
-    # 启动 komari
-    if KOMARI_SERVER and KOMARI_TOKEN:
-        threading.Timer(10, lambda: run_komari()).start()
-        threading.Thread(target=lambda: (time.sleep(15), komari_watchdog()), daemon=True).start()
-
-    # 获取 ISP
-    isp = 'Unknown'
+def download(url, dest):
+    if os.path.exists(dest): return
+    print(f'[DL] Downloading sbsh...')
+    opener = urllib.request.build_opener()
+    opener.addheaders = [
+        ('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+        ('Accept', '*/*'), ('Connection', 'keep-alive')]
+    urllib.request.install_opener(opener)
     try:
-        d = requests.get('https://api.ip.sb/geoip', headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
-        isp = f"{d.get('country_code', '')}-{d.get('isp', 'Unknown')}".replace(' ', '_')
-    except:
-        try:
-            d = requests.get('http://ip-api.com/json/', headers={'User-Agent': 'Mozilla/5.0'}, timeout=5).json()
-            if d.get('status') == 'success': isp = f"{d['countryCode']}-{d.get('org', 'Unknown')}".replace(' ', '_')
-        except: pass
-
-    # 生成 VMESS 链接
-    nn = f'{NAME}-{isp}-Argo' if NAME and NAME.strip() else f'{isp}-Argo'
-    vmess_config = {
-        "v": "2", "ps": nn, "add": CFIP, "port": CFPORT,
-        "id": UUID, "aid": "0", "scy": "auto",
-        "net": "ws", "type": "none",
-        "host": tunnel_host, "path": "/vmess-argo?ed=2560",
-        "tls": "tls", "sni": tunnel_host,
-        "alpn": "", "fp": "firefox", "insecure": "0"
-    }
-    txt = 'vmess://' + base64.b64encode(json.dumps(vmess_config, ensure_ascii=False).encode()).decode()
-    print(f'\n{txt}\n[INFO] CF IP: {CFIP}:{CFPORT} | Tunnel: {tunnel_host}')
-
-    # TG 推送
-    if BOT_TOKEN and CHAT_ID:
-        try:
-            requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
-                          params={'chat_id': CHAT_ID, 'text': f'✅ 节点已就绪 | {nn}\n🌐 Argo: {tunnel_host}\n\n<pre>{base64.b64encode(txt.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
-        except: pass
-
-    # HTTP 健康页
-    s = HTTPServer(('0.0.0.0', int(os.environ.get('PORT') or '3000')), Handler)
-    threading.Thread(target=s.serve_forever, daemon=True).start()
-
-    print('App running')
-    while True: time.sleep(3600)
+        urllib.request.urlretrieve(url, dest)
+        os.chmod(dest, os.stat(dest).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
+    except Exception as e:
+        if os.path.exists(dest): os.unlink(dest)
+        print(f'[FATAL] Download failed: {e}'); sys.exit(1)
 
 # ── komari ──────────────────────────────────────────────
-def run_komari():
-    if not KOMARI_SERVER or not KOMARI_TOKEN: return
+def komari_arch():
     a = platform.machine().lower()
     m = {'x86_64': 'amd64', 'amd64': 'amd64', 'aarch64': 'arm64', 'arm64': 'arm64'}
-    ka = next((v for k, v in m.items() if k in a), None) or ('arm' if a.startswith('arm') else None)
+    return next((v for k, v in m.items() if k in a), None) or ('arm' if a.startswith('arm') else None)
+
+def start_komari():
+    if not KOMARI_SERVER or not KOMARI_TOKEN: return
+    ka = komari_arch()
     if not ka: return
     kp = os.path.join(FILE_PATH, 'komori')
     kl = os.path.join(FILE_PATH, 'komori.log')
-    if not dl('komori', f'https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-{ka}'): return
-    run(f'nohup {kp} -e {KOMARI_SERVER} --auto-discovery {KOMARI_TOKEN} >{kl} 2>&1 &')
+    url = f'https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-{ka}'
+    if not os.path.exists(kp):
+        print('[DL] Downloading komori...')
+        download(url, kp)
+    subprocess.Popen(f'nohup {kp} -e {KOMARI_SERVER} --auto-discovery {KOMARI_TOKEN} >{kl} 2>&1 &', shell=True)
     print('[KOMARI] Started')
 
 def komari_alive():
@@ -183,7 +74,51 @@ def komari_watchdog():
         time.sleep(300)
         if not komari_alive():
             print('[KOMARI] Restarting...')
-            run_komari()
+            start_komari()
+
+# ── 主流程 ────────────────────────────────────────────
+def main():
+    print('App starting...')
+    os.makedirs(FILE_PATH, exist_ok=True)
+
+    # 下载 sbsh
+    arch = get_arch()
+    url = 'https://amd64.eooce.com/sbsh' if arch == 'amd64' else 'https://arm64.eooce.com/sbsh'
+    binary = os.path.join(os.getcwd(), 'sbsh')
+    download(url, binary)
+
+    # 构建传给 sbsh 的环境变量
+    env = os.environ.copy()
+    cfg = {
+        'UUID': UUID, 'NAME': NAME, 'CHAT_ID': CHAT_ID, 'BOT_TOKEN': BOT_TOKEN,
+        'ARGO_DOMAIN': ARGO_DOMAIN, 'ARGO_AUTH': ARGO_AUTH, 'ARGO_PORT': ARGO_PORT,
+        'CFIP': CFIP, 'CFPORT': CFPORT, 'SUB_PATH': SUB_PATH,
+        'FILE_PATH': FILE_PATH, 'PORT': str(PORT),
+        'DISABLE_ARGO': 'true' if DISABLE_ARGO else 'false',
+        'SHOW_LOG': 'true' if SHOW_LOG else 'false',
+    }
+    env.update({k: str(v) for k, v in cfg.items()})
+
+    # 启动 sbsh（自带 argo 隧道 + 节点生成）
+    proc = subprocess.Popen([binary], env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True, bufsize=1)
+
+    def log_output():
+        for line in proc.stdout:
+            print(line, end='')
+    threading.Thread(target=log_output, daemon=True).start()
+
+    # 启动 komari
+    if KOMARI_SERVER and KOMARI_TOKEN:
+        threading.Timer(10, start_komari).start()
+        threading.Thread(target=lambda: (time.sleep(15), komari_watchdog()), daemon=True).start()
+
+    try:
+        proc.wait()
+    except KeyboardInterrupt:
+        proc.terminate()
+    print('[FATAL] sbsh exited')
 
 if __name__ == '__main__':
+    signal.signal(signal.SIGINT, lambda *a: sys.exit(0))
+    signal.signal(signal.SIGTERM, lambda *a: sys.exit(0))
     main()

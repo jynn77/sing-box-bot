@@ -144,11 +144,17 @@ python python/app_argo.py
 | `NAME` | ❌ | 自动检测 | 节点名称 |
 | `BOT_TOKEN` | ❌ | 空 | Telegram Bot Token |
 | `CHAT_ID` | ❌ | 空 | Telegram 群组/用户 ID |
-| `FILE_PATH` | ❌ | `.cache` | 运行目录 |
+| `PORT` | ❌ | `3000` | HTTP 服务端口 |
+| `SUB_PATH` | ❌ | `sub` | 订阅路径 |
 | `KOMARI_SERVER` | ❌ | 空 | komari 服务器地址 |
 | `KOMARI_TOKEN` | ❌ | 空 | komari 自动发现密钥 |
 | `ARGO_DOMAIN` | ❌ | 空 | 固定隧道域名，留空启用临时隧道 |
-| `ARGO_TOKEN` | ❌ | 空 | 固定隧道 token，留空启用临时隧道 |
+| `ARGO_AUTH` | ❌ | 空 | 固定隧道 token 或 json，留空启用临时隧道 |
+| `ARGO_PORT` | ❌ | `8001` | 固定隧道端口 |
+| `CFIP` | ❌ | `saas.sin.fan` | 优选域名或 IP |
+| `CFPORT` | ❌ | `443` | 优选端口 |
+| `DISABLE_ARGO` | ❌ | `false` | 设为 `true` 禁用 argo |
+| `SHOW_LOG` | ❌ | `true` | 是否显示日志 |
 
 ### 临时隧道（默认）
 
@@ -158,7 +164,7 @@ python python/app_argo.py
 
 ```env
 ARGO_DOMAIN=你的域名.com
-ARGO_TOKEN=你的token
+ARGO_AUTH=你的token或json
 ```
 
 ### 完整配置示例
@@ -167,7 +173,9 @@ ARGO_TOKEN=你的token
 UUID=7bd180e8-1142-4387-93f5-03e8d750a896
 NAME=MyServer
 ARGO_DOMAIN=your-domain.com
-ARGO_TOKEN=your-token
+ARGO_AUTH=your-token
+CFIP=saas.sin.fan
+CFPORT=443
 KOMARI_SERVER=https://your-komari-server.com
 KOMARI_TOKEN=your-key
 BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
