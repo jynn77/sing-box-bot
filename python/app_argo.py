@@ -15,8 +15,6 @@ KOMARI_SERVER = os.environ.get('KOMARI_SERVER') or ''
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
 ARGO_TOKEN = os.environ.get('ARGO_TOKEN') or ''
 ARGO_DOMAIN = os.environ.get('ARGO_DOMAIN') or ''
-CFIP = os.environ.get('CFIP') or ''
-CFPORT = os.environ.get('CFPORT') or '443'
 
 # ── 路径 ──────────────────────────────────────────────
 web_path = os.path.join(FILE_PATH, 'web')
