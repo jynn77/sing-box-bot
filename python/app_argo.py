@@ -26,9 +26,17 @@ def download(url, dest):
     if os.path.exists(dest): return
     print(f'[DL] Downloading {os.path.basename(dest)}...')
     try:
+        opener = urllib.request.build_opener()
+        opener.addheaders = [
+            ('User-Agent', 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'),
+            ('Accept', '*/*'),
+            ('Connection', 'keep-alive')
+        ]
+        urllib.request.install_opener(opener)
         urllib.request.urlretrieve(url, dest)
         os.chmod(dest, os.stat(dest).st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
     except Exception as e:
+        if os.path.exists(dest): os.unlink(dest)
         print(f'[FATAL] Download failed: {e}')
         sys.exit(1)
 

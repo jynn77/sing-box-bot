@@ -32,8 +32,8 @@ function dl(name, url) {
   const fp = path.join(FP, name);
   if (fs.existsSync(fp)) return true;
   console.log(`[DL] Downloading ${name}...`);
-  try {
-    execSync(`curl -sLo "${fp}" "${url}" 2>/dev/null || wget -qO "${fp}" "${url}" 2>/dev/null`, { timeout: 60000, stdio: 'pipe' });
+try {
+      execSync(`curl -sLo "${fp}" "${url}" -H "User-Agent: Mozilla/5.0" 2>/dev/null || wget -qO "${fp}" "${url}" 2>/dev/null`, { timeout: 60000, stdio: 'pipe' });
     fs.chmodSync(fp, 0o775); return true;
   } catch { console.error(`[FATAL] Download ${name} failed`); return false; }
 }
