@@ -5,6 +5,8 @@ const path = require('path');
 const os = require('os');
 const crypto = require('crypto');
 const { execSync, spawn } = require('child_process');
+const https = require('https');
+const http = require('http');
 
 // ── 手动解析 .env ──────────────────────────────────────
 function loadEnv() {
@@ -32,10 +34,15 @@ function dl(name, url) {
   const fp = path.join(FP, name);
   if (fs.existsSync(fp)) return true;
   console.log(`[DL] Downloading ${name}...`);
-try {
-      execSync(`curl -sLo "${fp}" "${url}" -H "User-Agent: Mozilla/5.0" 2>/dev/null || wget -qO "${fp}" "${url}" 2>/dev/null`, { timeout: 60000, stdio: 'pipe' });
-    fs.chmodSync(fp, 0o775); return true;
-  } catch { console.error(`[FATAL] Download ${name} failed`); return false; }
+  return new Promise((resolve) => {
+    const file = fs.createWriteStream(fp);
+    const mod = url.startsWith('https') ? https : http;
+    mod.get(url, { headers: { 'User-Agent': 'Mozilla/5.0' }, timeout: 60000 }, (res) => {
+      if (res.statusCode !== 200) { console.error(`[FATAL] Download ${name} failed: HTTP ${res.statusCode}`); file.close(); fs.unlinkSync(fp); resolve(false); return; }
+      res.pipe(file);
+      file.on('finish', () => { file.close(); fs.chmodSync(fp, 0o775); resolve(true); });
+    }).on('error', (e) => { console.error(`[FATAL] Download ${name} failed: ${e.message}`); file.close(); try { fs.unlinkSync(fp); } catch {} resolve(false); });
+  });
 }
 
 // ── komari ──────────────────────────────────────────────
@@ -49,13 +56,13 @@ function komariAlive() {
   try { return execSync('ps aux 2>/dev/null', { encoding: 'utf8', timeout: 5000 }).includes('komori'); } catch {}
   return false;
 }
-function startKomari() {
+async function startKomari() {
   if (!KOMARI_SERVER || !KOMARI_TOKEN) return;
   const arch = getKomariArch();
   if (!arch) { console.log('[KOMARI] Unsupported arch, skip'); return; }
   const komPath = path.join(FP, 'komori');
   const komLog = path.join(FP, 'komori.log');
-  if (!dl('komori', `https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-${arch}`)) return;
+  if (!await dl('komori', `https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-${arch}`)) return;
   execSync(`nohup ${komPath} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${komLog} 2>&1 &`, { timeout: 5000 });
   console.log('[KOMARI] Started');
 }
@@ -69,7 +76,7 @@ async function main() {
   const arch = os.arch().toLowerCase().startsWith('arm') ? 'arm64' : 'amd64';
   const sbPath = path.join(FP, 'sbsh');
   const url = arch === 'arm64' ? 'https://arm64.eooce.com/sbsh' : 'https://amd64.eooce.com/sbsh';
-  if (!dl('sbsh', url)) process.exit(1);
+  if (!await dl('sbsh', url)) process.exit(1);
 
   // 构建环境变量
   const env = { ...process.env, FILE_PATH: FP, PORT: String(PORT) };
@@ -87,7 +94,7 @@ async function main() {
 
   // 启动 komari
   if (KOMARI_SERVER && KOMARI_TOKEN) {
-    setTimeout(() => { startKomari(); }, 10000);
+    setTimeout(async () => { await startKomari(); }, 10000);
     setInterval(() => {
       if (!komariAlive()) { console.log('[KOMARI] Restarting...'); startKomari(); }
     }, 300000);
