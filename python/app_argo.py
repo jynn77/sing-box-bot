@@ -15,13 +15,14 @@ KOMARI_SERVER = os.environ.get('KOMARI_SERVER') or ''
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
 ARGO_TOKEN = os.environ.get('ARGO_TOKEN') or ''
 ARGO_DOMAIN = os.environ.get('ARGO_DOMAIN') or ''
+CFIP = os.environ.get('CFIP') or 'saas.sin.fan'
+CFPORT = os.environ.get('CFPORT') or '443'
 
 # ── 路径 ──────────────────────────────────────────────
-web_path = os.path.join(FILE_PATH, 'web')
+sb_path = os.path.join(FILE_PATH, 'web')
 cfd_path = os.path.join(FILE_PATH, 'cfd')
 cfd_log = os.path.join(FILE_PATH, 'cfd.log')
 config_path = os.path.join(FILE_PATH, 'config.json')
-keypair_path = os.path.join(FILE_PATH, 'keypair.txt')
 
 # ── HTTP 处理器 ──────────────────────────────────────
 class Handler(BaseHTTPRequestHandler):
@@ -73,69 +74,43 @@ def main():
     if not dl('web', f'https://{arch}.ssss.nyc.mn/sb'): print('[FATAL] sing-box download failed'); return
     if not dl('cfd', f'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-{arch}'): print('[FATAL] cloudflared download failed'); return
 
-    # Keypair
-    pk = puk = None
-    if os.path.exists(keypair_path):
-        with open(keypair_path) as f:
-            parts = f.read().strip().split('\n')[:2]
-        if len(parts) >= 2: pk, puk = parts[0], parts[1]
-        else: os.remove(keypair_path)
-    if not pk or not puk:
-        kp = run(f'{web_path} generate reality-keypair')
-        pm = re.search(r'PrivateKey:\s*(.*)', kp)
-        pum = re.search(r'PublicKey:\s*(.*)', kp)
-        if not (pm and pum): print('[FATAL] Keypair failed'); return
-        pk, puk = pm.group(1).strip(), pum.group(1).strip()
-        with open(keypair_path, 'w') as f: f.write(f'{pk}\n{puk}\n')
-
-    # 证书
-    run(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"')
-    run(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"')
-
-    # 配置（hy2 + reality）
+    # 配置（VMESS + WebSocket，适合走 CF 隧道）
     with open(config_path, 'w') as f:
         json.dump({
             "log": {"disabled": True},
-            "inbounds": [
-                {"tag": "hy2", "type": "hysteria2", "listen": "::", "listen_port": 3001,
-                 "users": [{"password": UUID}], "masquerade": "https://bing.com",
-                 "tls": {"enabled": True, "alpn": ["h3"],
-                          "certificate_path": f"{FILE_PATH}/cert.pem", "key_path": f"{FILE_PATH}/private.key"}},
-                {"tag": "vless", "type": "vless", "listen": "::", "listen_port": 3001,
-                 "users": [{"uuid": UUID, "flow": "xtls-rprx-vision"}],
-                 "tls": {"enabled": True, "server_name": "www.iij.ad.jp",
-                          "reality": {"enabled": True, "handshake": {"server": "www.iij.ad.jp", "server_port": 443},
-                                       "private_key": pk, "short_id": [""]}}}],
+            "inbounds": [{
+                "tag": "vmess-ws", "type": "vmess", "listen": "::", "listen_port": 3001,
+                "users": [{"uuid": UUID, "alterId": 0}],
+                "transport": {"type": "ws", "path": "/vmess-argo"}
+            }],
             "outbounds": [{"type": "direct", "tag": "direct"}]
         }, f, indent=2)
 
     # 启动 sing-box
-    run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
+    run(f'nohup {sb_path} run -c {config_path} >/dev/null 2>&1 &')
     print('[SB] sing-box started')
     time.sleep(3)
 
     # ── Cloudflare Tunnel ──────────────────────────────
-    tunnel_url = ''
+    tunnel_host = ''
     if ARGO_TOKEN and ARGO_DOMAIN:
-        # 固定隧道
         print(f'[ARGO] Using fixed tunnel: {ARGO_DOMAIN}')
         run(f'nohup {cfd_path} tunnel run --token {ARGO_TOKEN} >{cfd_log} 2>&1 &')
-        tunnel_url = f'https://{ARGO_DOMAIN}'
+        tunnel_host = ARGO_DOMAIN
     else:
-        # 临时隧道（默认）
         print('[ARGO] Starting temporary tunnel...')
         run(f'nohup {cfd_path} tunnel --url http://localhost:3001 >{cfd_log} 2>&1 &')
         for _ in range(30):
             time.sleep(1)
             try:
                 with open(cfd_log) as f:
-                    m = re.search(r'https://[a-zA-Z0-9-]+\.trycloudflare\.com', f.read())
-                    if m: tunnel_url = m.group(0); break
+                    m = re.search(r'https://([a-zA-Z0-9-]+\.trycloudflare\.com)', f.read())
+                    if m: tunnel_host = m.group(1); break
             except: pass
-        if not tunnel_url:
+        if not tunnel_host:
             print('[FATAL] Failed to get tunnel URL')
             return
-    print(f'[ARGO] Tunnel: {tunnel_url}')
+    print(f'[ARGO] Tunnel: {tunnel_host}')
 
     # 启动 komari
     if KOMARI_SERVER and KOMARI_TOKEN:
@@ -153,19 +128,24 @@ def main():
             if d.get('status') == 'success': isp = f"{d['countryCode']}-{d.get('org', 'Unknown')}".replace(' ', '_')
         except: pass
 
-    # 节点链接
-    host = tunnel_url.replace('https://', '').split('/')[0]
-    nn = f'{NAME}-{isp}' if NAME and NAME.strip() else isp
-    txt = (f'hysteria2://{UUID}@{host}:443/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#{nn}'
-           f'\nvless://{UUID}@{host}:443?encryption=none&flow=xtls-rprx-vision&security=reality'
-           f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
-    print(f'\n{txt}\n[INFO] Tunnel: {tunnel_url}')
+    # 生成 VMESS 链接
+    nn = f'{NAME}-{isp}-Argo' if NAME and NAME.strip() else f'{isp}-Argo'
+    vmess_config = {
+        "v": "2", "ps": nn, "add": CFIP, "port": CFPORT,
+        "id": UUID, "aid": "0", "scy": "auto",
+        "net": "ws", "type": "none",
+        "host": tunnel_host, "path": "/vmess-argo?ed=2560",
+        "tls": "tls", "sni": tunnel_host,
+        "alpn": "", "fp": "firefox", "insecure": "0"
+    }
+    txt = 'vmess://' + base64.b64encode(json.dumps(vmess_config, ensure_ascii=False).encode()).decode()
+    print(f'\n{txt}\n[INFO] CF IP: {CFIP}:{CFPORT} | Tunnel: {tunnel_host}')
 
     # TG 推送
     if BOT_TOKEN and CHAT_ID:
         try:
             requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
-                          params={'chat_id': CHAT_ID, 'text': f'✅ 节点已就绪 | {nn}\n🌐 Argo: {host}\n\n<pre>{base64.b64encode(txt.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
+                          params={'chat_id': CHAT_ID, 'text': f'✅ 节点已就绪 | {nn}\n🌐 Argo: {tunnel_host}\n\n<pre>{base64.b64encode(txt.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
         except: pass
 
     # HTTP 健康页
