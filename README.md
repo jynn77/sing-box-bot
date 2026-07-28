@@ -119,6 +119,72 @@ KOMARI_TOKEN=your-token
 
 内置 5 分钟进程保活，崩溃自动重启。
 
+---
+
+## 🌐 Argo 版（Cloudflare Tunnel）
+
+基于 `sbsh` 全能二进制，自带 argo 隧道 + 多协议支持，零依赖。
+
+### 快速开始
+
+```bash
+# Node.js 版（无需 npm install）
+node node/min_argo.js
+
+# Python 版
+python python/app_argo.py
+```
+
+### Argo 版 .env 配置
+
+| 变量 | 必填 | 默认值 | 说明 |
+|------|------|--------|------|
+| `PORT` | ❌ | `3000` | HTTP 服务端口 + 订阅端口 |
+| `UUID` | ❌ | 自动生成 | 节点 UUID |
+| `NAME` | ❌ | 自动检测 | 节点名称 |
+| `BOT_TOKEN` | ❌ | 空 | Telegram Bot Token |
+| `CHAT_ID` | ❌ | 空 | Telegram 群组/用户 ID |
+| `FILE_PATH` | ❌ | `.cache` | 运行目录 |
+| `ARGO_DOMAIN` | ❌ | 空 | 固定隧道域名，留空启用临时隧道 |
+| `ARGO_AUTH` | ❌ | 空 | 固定隧道 token 或 json，留空启用临时隧道 |
+| `ARGO_PORT` | ❌ | `8001` | 固定隧道端口（需与 CF 后台一致） |
+| `CFIP` | ❌ | `saas.sin.fan` | 优选域名或 IP |
+| `CFPORT` | ❌ | `443` | 优选端口 |
+| `DISABLE_ARGO` | ❌ | `false` | 设为 `true` 禁用 argo |
+| `SHOW_LOG` | ❌ | `true` | 是否显示日志 |
+| `SUB_PATH` | ❌ | `sub` | 订阅路径 |
+| `UPLOAD_URL` | ❌ | 空 | 节点上传地址 |
+| `S5_PORT` | ❌ | 空 | SOCKS5 端口 |
+| `HY2_PORT` | ❌ | 空 | Hysteria2 端口 |
+| `TUIC_PORT` | ❌ | 空 | TUIC 端口 |
+| `REALITY_PORT` | ❌ | 空 | Reality 端口 |
+| `NEZHA_SERVER` | ❌ | 空 | 哪吒面板地址 |
+| `NEZHA_KEY` | ❌ | 空 | 哪吒密钥 |
+
+### 临时隧道（默认）
+
+不设 `ARGO_DOMAIN` 和 `ARGO_AUTH`，自动生成 `https://随机名.trycloudflare.com`。
+
+### 固定隧道
+
+```env
+ARGO_DOMAIN=你的域名.com
+ARGO_AUTH=你的token或json
+```
+
+### 完整配置示例
+
+```env
+UUID=7bd180e8-1142-4387-93f5-03e8d750a896
+NAME=MyServer
+ARGO_DOMAIN=your-domain.com
+ARGO_AUTH=your-token
+CFIP=saas.sin.fan
+CFPORT=443
+BOT_TOKEN=123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11
+CHAT_ID=-1001234567890
+```
+
 ## 📝 说明
 
 - hy2 和 reality 共用同一端口（`NODE_PORT`）
