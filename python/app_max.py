@@ -232,7 +232,7 @@ def main():
                   f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
     log(f'\n{txt_direct}\n[INFO] Direct Port: {NODE_PORT}', 1)
 
-# Argo 节点
+    # Argo 节点
     if argo_domain:
         VMESS = {"v":"2","ps":f"{nn}","add":CFIP,"port":CFPORT,"id":UUID,"aid":"0","scy":"none","net":"ws","type":"none","host":argo_domain,"path":"/vmess-argo?ed=2560","tls":"tls","sni":argo_domain,"alpn":"","fp":"chrome"}
         txt_argo = (f'vless://{UUID}@{CFIP}:{CFPORT}?encryption=none&security=tls&sni={argo_domain}&fp=chrome&type=ws&host={argo_domain}&path=%2Fvless-argo%3Fed%3D2560#{nn}'
@@ -242,11 +242,13 @@ def main():
 
     # TG 推送（直连 + argo）
     if BOT_TOKEN and CHAT_ID:
+        all_txt = txt_direct
+        if argo_domain: all_txt += '\n' + txt_argo
         msg = f'✅ 节点已就绪 | {nn}\n🌍 IP: {ip}'
         if argo_domain: msg += f'\n🌐 Argo: {argo_domain}'
         try:
             requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
-                          params={'chat_id': CHAT_ID, 'text': msg + f'\n\n<pre>{base64.b64encode(txt_direct.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
+                          params={'chat_id': CHAT_ID, 'text': msg + f'\n\n<pre>{base64.b64encode(all_txt.encode()).decode()}</pre>', 'parse_mode': 'HTML'}, timeout=15)
             log('[TG] Sent', 2)
         except Exception as e: error(f'[TG] Failed: {e}')
 
