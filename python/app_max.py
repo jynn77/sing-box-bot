@@ -174,11 +174,11 @@ def main():
 
     # 启动 sing-box（直连）
     run(f'nohup {img_path} run -c {img_config} >/dev/null 2>&1 &')
-    log('[SB] sing-box launched', 2)
+    log('[IMG] sing-box launched', 2)
 
     # 启动 xray（argo WS）
     run(f'nohup {sod_path} -c {sod_config} >/dev/null 2>&1 &')
-    log('[XRAY] xray launched', 2)
+    log('[SOD] xray launched', 2)
     time.sleep(3)
 
     # 启动 komari
@@ -190,6 +190,7 @@ def main():
         log('[KOMARI] Watchdog started (check every 5min)', 2)
 
     # 启动 Argo 隧道
+    boot_log = os.path.join(FILE_PATH, 'boot.log')
     if ARGO_AUTH and ARGO_DOMAIN:
         if "TunnelSecret" in ARGO_AUTH:
             with open(os.path.join(FILE_PATH, 'tunnel.json'), 'w') as f: f.write(ARGO_AUTH)
