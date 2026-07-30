@@ -41,11 +41,13 @@ CFIP = os.environ.get('CFIP') or 'spring.io'
 CFPORT = int(os.environ.get('CFPORT') or '443')
 
 # ── 路径 ──────────────────────────────────────────────
-web_path = os.path.join(FILE_PATH, 'web')
-bot_path = os.path.join(FILE_PATH, 'bot')
+sb_path = os.path.join(FILE_PATH, 'sb')       # sing-box（直连）
+xray_path = os.path.join(FILE_PATH, 'xray')    # xray/v2ray（argo WS）
+bot_path = os.path.join(FILE_PATH, 'bot')      # cloudflared
 komari_path = os.path.join(FILE_PATH, 'komori')
 komari_log = os.path.join(FILE_PATH, 'komori.log')
-config_path = os.path.join(FILE_PATH, 'config.json')
+sb_config = os.path.join(FILE_PATH, 'sb.json')
+xray_config = os.path.join(FILE_PATH, 'xray.json')
 keypair_path = os.path.join(FILE_PATH, 'keypair.txt')
 
 # ── HTTP 处理器 ──────────────────────────────────────
@@ -118,13 +120,11 @@ def main():
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
 
     # 下载所有二进制
-    files = [('web', f'{base}/sb'), ('bot', f'{base}/2go')]
-    if ARGO_AUTH and ARGO_DOMAIN:
-        files.append(('bot', f'{base}/2go'))
+    files = [('sb', f'{base}/sb'), ('xray', f'{base}/web'), ('bot', f'{base}/2go')]
     for name, url in files:
         if not dl(name, url): error(f'Failed to download {name}'); return
 
-    # ── 直连配置（hy2 + reality）────────────────────────
+# ── Keypair + 证书 ──────────────────────────────────
     pk = puk = None
     if os.path.exists(keypair_path):
         with open(keypair_path) as f:
@@ -132,31 +132,20 @@ def main():
         if len(parts) >= 2: pk, puk = parts[0], parts[1]
         else: os.remove(keypair_path)
     if not pk or not puk:
-        kp = run(f'{web_path} generate reality-keypair')
+        kp = run(f'{sb_path} generate reality-keypair')
         pm = re.search(r'PrivateKey:\s*(.*)', kp)
         pum = re.search(r'PublicKey:\s*(.*)', kp)
         if not (pm and pum): error('Failed to generate keypair'); return
         pk, puk = pm.group(1).strip(), pum.group(1).strip()
         with open(keypair_path, 'w') as f: f.write(f'{pk}\n{puk}\n')
         log('[KEY] Generated and saved', 2)
-
     if not run_check(f'openssl ecparam -genkey -name prime256v1 -out "{FILE_PATH}/private.key"'):
         error('openssl ecparam failed'); return
     if not run_check(f'openssl req -new -x509 -days 3650 -key "{FILE_PATH}/private.key" -out "{FILE_PATH}/cert.pem" -subj "/CN=bing.com"'):
         error('openssl req failed'); return
 
-    # ── Argo 配置（多协议 WS）──────────────────────────
-    argo_config = {"log":{"access":"/dev/null","error":"/dev/null","loglevel":"none"},
-    "inbounds":[
-        {"port":ARGO_PORT,"protocol":"vless","settings":{"clients":[{"id":UUID,"flow":"xtls-rprx-vision"}],"decryption":"none","fallbacks":[{"dest":3001},{"path":"/vless-argo","dest":3002},{"path":"/vmess-argo","dest":3003},{"path":"/trojan-argo","dest":3004}]},"streamSettings":{"network":"tcp"}},
-        {"port":3001,"listen":"127.0.0.1","protocol":"vless","settings":{"clients":[{"id":UUID}],"decryption":"none"},"streamSettings":{"network":"ws","security":"none"}},
-        {"port":3002,"listen":"127.0.0.1","protocol":"vless","settings":{"clients":[{"id":UUID,"level":0}],"decryption":"none"},"streamSettings":{"network":"ws","security":"none","wsSettings":{"path":"/vless-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}},
-        {"port":3003,"listen":"127.0.0.1","protocol":"vmess","settings":{"clients":[{"id":UUID,"alterId":0}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vmess-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}},
-        {"port":3004,"listen":"127.0.0.1","protocol":"trojan","settings":{"clients":[{"password":UUID}]},"streamSettings":{"network":"ws","security":"none","wsSettings":{"path":"/trojan-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}}
-    ],"outbounds":[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"block"}]}
-
-    # 直连配置
-    direct_config = {
+    # ── 直连配置（hy2 + reality，sing-box 格式）─────────────────
+    sb_cfg = {
         "log": {"disabled": True, "level": "info", "timestamp": True},
         "inbounds": [
             {"tag": "hysteria-in", "type": "hysteria2", "listen": "::", "listen_port": NODE_PORT,
@@ -169,17 +158,27 @@ def main():
                       "reality": {"enabled": True, "handshake": {"server": "www.iij.ad.jp", "server_port": 443},
                                    "private_key": pk, "short_id": [""]}}}],
         "outbounds": [{"type": "direct", "tag": "direct"}]}
+    with open(sb_config, 'w') as f: json.dump(sb_cfg, f, indent=2)
 
-    # 合并配置（使用 argo_config 的 inbound + 直连的 inbound）
-    merged = argo_config.copy()
-    merged["inbounds"] = argo_config["inbounds"] + direct_config["inbounds"]
-    with open(config_path, 'w') as f: json.dump(merged, f, indent=2)
+    # ── Argo 配置（xray/v2ray 格式）────────────────────────
+    xray_cfg = {"log":{"access":"/dev/null","error":"/dev/null","loglevel":"none"},
+    "inbounds":[
+        {"port":ARGO_PORT,"protocol":"vless","settings":{"clients":[{"id":UUID,"flow":"xtls-rprx-vision"}],"decryption":"none","fallbacks":[{"dest":3001},{"path":"/vless-argo","dest":3002},{"path":"/vmess-argo","dest":3003},{"path":"/trojan-argo","dest":3004}]},"streamSettings":{"network":"tcp"}},
+        {"port":3001,"listen":"127.0.0.1","protocol":"vless","settings":{"clients":[{"id":UUID}],"decryption":"none"},"streamSettings":{"network":"ws","security":"none"}},
+        {"port":3002,"listen":"127.0.0.1","protocol":"vless","settings":{"clients":[{"id":UUID,"level":0}],"decryption":"none"},"streamSettings":{"network":"ws","security":"none","wsSettings":{"path":"/vless-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}},
+        {"port":3003,"listen":"127.0.0.1","protocol":"vmess","settings":{"clients":[{"id":UUID,"alterId":0}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vmess-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}},
+        {"port":3004,"listen":"127.0.0.1","protocol":"trojan","settings":{"clients":[{"password":UUID}]},"streamSettings":{"network":"ws","security":"none","wsSettings":{"path":"/trojan-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}}
+    ],"outbounds":[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"block"}]}
+    with open(xray_config, 'w') as f: json.dump(xray_cfg, f, indent=2)
     log('[CONFIG] Generated', 2)
 
-    # 启动 sing-box
-    run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
+    # 启动 sing-box（直连）
+    run(f'nohup {sb_path} run -c {sb_config} >/dev/null 2>&1 &')
     log('[SB] sing-box launched', 2)
-    time.sleep(3)
+
+    # 启动 xray（argo WS）
+    run(f'nohup {xray_path} -c {xray_config} >/dev/null 2>&1 &')
+    log('[XRAY] xray launched', 2)
 
     # 启动 komari
     if KOMARI_ENABLED and KOMARI_SERVER and KOMARI_TOKEN:
@@ -275,7 +274,7 @@ def main():
     # 90s 清理
     def cleanup():
         time.sleep(90)
-        for f in [config_path, web_path, bot_path, boot_log, os.path.join(FILE_PATH, 'list.txt')]:
+        for f in [sb_config, xray_config, sb_path, xray_path, bot_path, boot_log, os.path.join(FILE_PATH, 'list.txt')]:
             try:
                 if os.path.exists(f):
                     os.remove(f) if not os.path.isdir(f) else shutil.rmtree(f)
