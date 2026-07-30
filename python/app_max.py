@@ -203,7 +203,7 @@ def main():
         log('[ARGO] Fixed tunnel started', 1)
         argo_domain = ARGO_DOMAIN
     else:
-boot_log = os.path.join(FILE_PATH, 'boot.log')
+        boot_log = os.path.join(FILE_PATH, 'boot.log')
         exec_cmd(f'nohup {bot_path} tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile {boot_log} --loglevel info --url http://localhost:{ARGO_PORT} >/dev/null 2>&1 &')
         log('[ARGO] Temporary tunnel starting...', 1)
         argo_domain = None
