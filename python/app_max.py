@@ -41,13 +41,13 @@ CFIP = os.environ.get('CFIP') or 'spring.io'
 CFPORT = int(os.environ.get('CFPORT') or '443')
 
 # ── 路径 ──────────────────────────────────────────────
-sb_path = os.path.join(FILE_PATH, 'sb')       # sing-box（直连）
-xray_path = os.path.join(FILE_PATH, 'xray')    # xray/v2ray（argo WS）
+img_path = os.path.join(FILE_PATH, 'img')       # sing-box（直连）
+sod_path = os.path.join(FILE_PATH, 'sod')    # xray/v2ray（argo WS）
 bot_path = os.path.join(FILE_PATH, 'bot')      # cloudflared
 komari_path = os.path.join(FILE_PATH, 'komori')
 komari_log = os.path.join(FILE_PATH, 'komori.log')
-sb_config = os.path.join(FILE_PATH, 'sb.json')
-xray_config = os.path.join(FILE_PATH, 'xray.json')
+img_config = os.path.join(FILE_PATH, 'img.json')
+sod_config = os.path.join(FILE_PATH, 'sod.json')
 keypair_path = os.path.join(FILE_PATH, 'keypair.txt')
 
 # ── HTTP 处理器 ──────────────────────────────────────
@@ -120,7 +120,7 @@ def main():
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
 
     # 下载所有二进制
-    files = [('sb', f'{base}/sb'), ('xray', f'{base}/web'), ('bot', f'{base}/2go')]
+    files = [('img', f'{base}/sb'), ('sod', f'{base}/web'), ('bot', f'{base}/2go')]
     for name, url in files:
         if not dl(name, url): error(f'Failed to download {name}'); return
 
@@ -132,7 +132,7 @@ def main():
         if len(parts) >= 2: pk, puk = parts[0], parts[1]
         else: os.remove(keypair_path)
     if not pk or not puk:
-        kp = run(f'{sb_path} generate reality-keypair')
+        kp = run(f'{img_path} generate reality-keypair')
         pm = re.search(r'PrivateKey:\s*(.*)', kp)
         pum = re.search(r'PublicKey:\s*(.*)', kp)
         if not (pm and pum): error('Failed to generate keypair'); return
@@ -158,7 +158,7 @@ def main():
                       "reality": {"enabled": True, "handshake": {"server": "www.iij.ad.jp", "server_port": 443},
                                    "private_key": pk, "short_id": [""]}}}],
         "outbounds": [{"type": "direct", "tag": "direct"}]}
-    with open(sb_config, 'w') as f: json.dump(sb_cfg, f, indent=2)
+    with open(img_config, 'w') as f: json.dump(sb_cfg, f, indent=2)
 
     # ── Argo 配置（xray/v2ray 格式）────────────────────────
     xray_cfg = {"log":{"access":"/dev/null","error":"/dev/null","loglevel":"none"},
@@ -169,15 +169,15 @@ def main():
         {"port":3003,"listen":"127.0.0.1","protocol":"vmess","settings":{"clients":[{"id":UUID,"alterId":0}]},"streamSettings":{"network":"ws","wsSettings":{"path":"/vmess-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}},
         {"port":3004,"listen":"127.0.0.1","protocol":"trojan","settings":{"clients":[{"password":UUID}]},"streamSettings":{"network":"ws","security":"none","wsSettings":{"path":"/trojan-argo"}},"sniffing":{"enabled":True,"destOverride":["http","tls","quic"],"metadataOnly":False}}
     ],"outbounds":[{"protocol":"freedom","tag":"direct"},{"protocol":"blackhole","tag":"block"}]}
-    with open(xray_config, 'w') as f: json.dump(xray_cfg, f, indent=2)
+    with open(sod_config, 'w') as f: json.dump(xray_cfg, f, indent=2)
     log('[CONFIG] Generated', 2)
 
     # 启动 sing-box（直连）
-    run(f'nohup {sb_path} run -c {sb_config} >/dev/null 2>&1 &')
+    run(f'nohup {img_path} run -c {img_config} >/dev/null 2>&1 &')
     log('[SB] sing-box launched', 2)
 
     # 启动 xray（argo WS）
-    run(f'nohup {xray_path} -c {xray_config} >/dev/null 2>&1 &')
+    run(f'nohup {sod_path} -c {sod_config} >/dev/null 2>&1 &')
     log('[XRAY] xray launched', 2)
     time.sleep(3)
 
@@ -274,7 +274,7 @@ def main():
     # 90s 清理
     def cleanup():
         time.sleep(90)
-        for f in [sb_config, xray_config, sb_path, xray_path, bot_path, boot_log, os.path.join(FILE_PATH, 'list.txt')]:
+        for f in [img_config, sod_config, img_path, sod_path, bot_path, boot_log, os.path.join(FILE_PATH, 'list.txt')]:
             try:
                 if os.path.exists(f):
                     os.remove(f) if not os.path.isdir(f) else shutil.rmtree(f)
