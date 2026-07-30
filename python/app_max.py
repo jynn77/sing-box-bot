@@ -17,7 +17,6 @@ UPLOAD_URL = os.environ.get('UPLOAD_URL') or ''
 PROJECT_URL = os.environ.get('PROJECT_URL') or ''
 AUTO_ACCESS = (os.environ.get('AUTO_ACCESS') or 'false').lower() == 'true'
 FILE_PATH = os.environ.get('FILE_PATH') or '.cache'
-SUB_PATH = os.environ.get('SUB_PATH') or 'sub'
 uuid_file = os.path.join(FILE_PATH, 'uuid.txt')
 UUID = os.environ.get('UUID') or (
     open(uuid_file).read().strip() if os.path.exists(uuid_file) else None
@@ -48,27 +47,14 @@ komari_path = os.path.join(FILE_PATH, 'komori')
 komari_log = os.path.join(FILE_PATH, 'komori.log')
 config_path = os.path.join(FILE_PATH, 'config.json')
 keypair_path = os.path.join(FILE_PATH, 'keypair.txt')
-sub_path = os.path.join(FILE_PATH, 'sub.txt')
-list_path = os.path.join(FILE_PATH, 'list.txt')
-boot_log_path = os.path.join(FILE_PATH, 'boot.log')
 
 # ── HTTP 处理器 ──────────────────────────────────────
 class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
-        if self.path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(b'<h2>sing-box-bot running</h2>')
-        elif self.path == f'/{SUB_PATH}':
-            try:
-                with open(sub_path, 'rb') as f: c = f.read()
-                self.send_response(200)
-                self.send_header('Content-type', 'text/plain')
-                self.end_headers()
-                self.wfile.write(c)
-            except: self.send_response(404); self.end_headers()
-        else: self.send_response(404); self.end_headers()
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html')
+        self.end_headers()
+        self.wfile.write(b'<h2>sing-box-bot running</h2>')
     def log_message(self, *a): pass
 
 # ── 工具 ──────────────────────────────────────────────
@@ -214,20 +200,21 @@ def main():
             exec_cmd(f'nohup {bot_path} tunnel --edge-ip-version auto --config {os.path.join(FILE_PATH, "tunnel.yml")} run >/dev/null 2>&1 &')
         else:
             exec_cmd(f'nohup {bot_path} tunnel --edge-ip-version auto --no-autoupdate --protocol http2 run --token {ARGO_AUTH} >/dev/null 2>&1 &')
-        print('[ARGO] Fixed tunnel started')
+        log('[ARGO] Fixed tunnel started', 1)
         argo_domain = ARGO_DOMAIN
     else:
-        exec_cmd(f'nohup {bot_path} tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile {boot_log_path} --loglevel info --url http://localhost:{ARGO_PORT} >/dev/null 2>&1 &')
+boot_log = os.path.join(FILE_PATH, 'boot.log')
+        exec_cmd(f'nohup {bot_path} tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile {boot_log} --loglevel info --url http://localhost:{ARGO_PORT} >/dev/null 2>&1 &')
         print('[ARGO] Temporary tunnel starting...')
         argo_domain = None
         for _ in range(30):
             time.sleep(1)
             try:
-                with open(boot_log_path) as f:
+                with open(boot_log) as f:
                     m = re.search(r'https?://([^ ]*trycloudflare\.com)/?', f.read())
                     if m: argo_domain = m.group(1); break
             except: pass
-        if argo_domain: print(f'[ARGO] Tunnel: {argo_domain}')
+        if argo_domain: log(f'[ARGO] Tunnel: {argo_domain}', 1)
 
     # 获取 IP + ISP
     try: ip = requests.get('http://ipv4.ip.sb', timeout=5).text.strip()
@@ -245,17 +232,13 @@ def main():
                   f'&sni=www.iij.ad.jp&fp=chrome&pbk={puk}&type=tcp&headerType=none#{nn}')
     log(f'\n{txt_direct}\n[INFO] Direct Port: {NODE_PORT}', 1)
 
-    # Argo 节点
+# Argo 节点
     if argo_domain:
         VMESS = {"v":"2","ps":f"{nn}","add":CFIP,"port":CFPORT,"id":UUID,"aid":"0","scy":"none","net":"ws","type":"none","host":argo_domain,"path":"/vmess-argo?ed=2560","tls":"tls","sni":argo_domain,"alpn":"","fp":"chrome"}
         txt_argo = (f'vless://{UUID}@{CFIP}:{CFPORT}?encryption=none&security=tls&sni={argo_domain}&fp=chrome&type=ws&host={argo_domain}&path=%2Fvless-argo%3Fed%3D2560#{nn}'
                     f'\nvmess://{base64.b64encode(json.dumps(VMESS).encode()).decode()}'
                     f'\ntrojan://{UUID}@{CFIP}:{CFPORT}?security=tls&sni={argo_domain}&fp=chrome&type=ws&host={argo_domain}&path=%2Ftrojan-argo%3Fed%3D2560#{nn}')
-        print(f'\n{txt_argo}\n[INFO] Argo: {argo_domain}')
-        # 保存订阅文件
-        sub_txt = base64.b64encode(txt_argo.encode()).decode()
-        with open(sub_path, 'w') as f: f.write(sub_txt)
-        with open(list_path, 'w') as f: f.write(txt_argo)
+        log(f'\n{txt_argo}\n[INFO] Argo: {argo_domain}', 1)
 
     # TG 推送（直连 + argo）
     if BOT_TOKEN and CHAT_ID:
@@ -290,7 +273,7 @@ def main():
     # 90s 清理
     def cleanup():
         time.sleep(90)
-        for f in [config_path, web_path, bot_path, boot_log_path, list_path]:
+        for f in [config_path, web_path, bot_path, boot_log, os.path.join(FILE_PATH, 'list.txt')]:
             try:
                 if os.path.exists(f):
                     os.remove(f) if not os.path.isdir(f) else shutil.rmtree(f)
