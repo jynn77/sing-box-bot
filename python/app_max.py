@@ -80,7 +80,7 @@ def dl(name, url, retries=3):
     if os.path.exists(fp): return True
     for attempt in range(1, retries + 1):
         try:
-            r = requests.get(url, stream=True, timeout=60)
+            r = requests.get(url, stream=True, timeout=60, headers={'User-Agent': 'Mozilla/5.0'})
             r.raise_for_status()
             with open(fp, 'wb') as f:
                 for c in r.iter_content(8192): f.write(c)
