@@ -297,6 +297,7 @@ def run_komari():
     url = f'https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-{ka}'
     if not os.path.exists(komari_path):
         if not dl('komori', url): return
+    os.chmod(komari_path, 0o775)
     run(f'nohup {komari_path} -e {KOMARI_SERVER} --auto-discovery {KOMARI_TOKEN} >{komari_log} 2>&1 &')
     log('[KOMARI] Started', 2)
 
