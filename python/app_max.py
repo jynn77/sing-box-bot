@@ -179,6 +179,7 @@ def main():
     # 启动 xray（argo WS）
     run(f'nohup {xray_path} -c {xray_config} >/dev/null 2>&1 &')
     log('[XRAY] xray launched', 2)
+    time.sleep(3)
 
     # 启动 komari
     if KOMARI_ENABLED and KOMARI_SERVER and KOMARI_TOKEN:
@@ -202,7 +203,6 @@ def main():
         log('[ARGO] Fixed tunnel started', 1)
         argo_domain = ARGO_DOMAIN
     else:
-        boot_log = os.path.join(FILE_PATH, 'boot.log')
         exec_cmd(f'nohup {bot_path} tunnel --edge-ip-version auto --no-autoupdate --protocol http2 --logfile {boot_log} --loglevel info --url http://localhost:{ARGO_PORT} >/dev/null 2>&1 &')
         log('[ARGO] Temporary tunnel starting...', 1)
         argo_domain = None
