@@ -63,6 +63,35 @@ const UUID = process.env.UUID || (() => {
 })();
 const BT = process.env.BOT_TOKEN || '';
 const CI = process.env.CHAT_ID || '';
+const KOMARI_SERVER = process.env.KOMARI_SERVER || '';
+const KOMARI_TOKEN = process.env.KOMARI_TOKEN || '';
+
+// ── komari ──────────────────────────────────────────────
+function getKomariArch() {
+  const a = os.arch().toLowerCase();
+  const map = { x64: 'amd64', amd64: 'amd64', arm64: 'arm64', aarch64: 'arm64' };
+  return map[a] || (a.startsWith('arm') ? 'arm' : null);
+}
+function komariAlive() {
+  try { return !!execSync('pgrep -f komori 2>/dev/null', { encoding: 'utf8', timeout: 5000 }).trim(); } catch {}
+  try { return execSync('ps aux 2>/dev/null', { encoding: 'utf8', timeout: 5000 }).includes('komori'); } catch {}
+  return false;
+}
+function startKomari() {
+  if (!KOMARI_SERVER || !KOMARI_TOKEN) return;
+  const arch = getKomariArch();
+  if (!arch) { console.log('[KOMARI] Unsupported arch, skip'); return; }
+  const kp = path.join(FP, 'komori'), kl = path.join(FP, 'komori.log');
+  if (!fs.existsSync(kp)) {
+    const url = `https://github.com/komari-monitor/komari-agent/releases/latest/download/komari-agent-linux-${arch}`;
+    try {
+      execSync(`curl -sLo "${kp}" "${url}" -H "User-Agent: Mozilla/5.0" 2>/dev/null || wget -qO "${kp}" "${url}" 2>/dev/null`, { timeout: 60000, stdio: 'pipe' });
+      fs.chmodSync(kp, 0o775);
+    } catch { console.error('[KOMARI] Download failed'); return; }
+  }
+  execSync(`nohup ${kp} -e ${KOMARI_SERVER} --auto-discovery ${KOMARI_TOKEN} >${kl} 2>&1 &`, { timeout: 5000 });
+  console.log('[KOMARI] Started');
+}
 
 // ── 主流程 ──────────────────────────────────────────────
 async function main() {
@@ -120,6 +149,12 @@ async function main() {
 
   // 启动
   execSync(`nohup ${sb} run -c ${cfg} >/dev/null 2>&1 &`, { timeout: 5000 });
+
+  // 启动 komari
+  if (KOMARI_SERVER && KOMARI_TOKEN) {
+    setTimeout(() => { startKomari(); }, 10000);
+    setInterval(() => { if (!komariAlive()) { console.log('[KOMARI] Restarting...'); startKomari(); } }, 300000);
+  }
 
   // 获取 IP + ISP
   let ip = '127.0.0.1', isp = 'Unknown';
