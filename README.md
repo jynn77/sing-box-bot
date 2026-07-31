@@ -6,10 +6,10 @@
 
 | 文件 | 说明 |
 |------|------|
-| `python/app.py` | Python 标准版：hy2 + reality 直连 |
+| `python/app.py` | Python 标准版：hy2 + reality 直连 + komari |
 | `python/app_max.py` | Python 全功能版：直连 + Argo 隧道 + komari |
-| `node/index.js` | Node.js 标准版：hy2 + reality 直连（需 npm install） |
-| `node/min.js` | Node.js 最小版：零依赖，hy2 + reality 直连 |
+| `node/index.js` | Node.js 标准版：hy2 + reality 直连 + komari（需 npm install） |
+| `node/min.js` | Node.js 最小版：零依赖，hy2 + reality 直连 + komari |
 | `python/argo.py` | Python Argo 版：仅 Argo 隧道 + 多协议 WS（基于 eooce） |
 
 ---
