@@ -149,6 +149,7 @@ async function main() {
 
   // 启动
   execSync(`nohup ${sb} run -c ${cfg} >/dev/null 2>&1 &`, { timeout: 5000 });
+  console.log('App running');
 
   // 启动 komari
   if (KOMARI_SERVER && KOMARI_TOKEN) {
@@ -182,11 +183,6 @@ async function main() {
         { chat_id: CI, text: `✅ 节点已就绪 | ${nn}\n🌍 IP: ${ip}\n\n<pre>${Buffer.from(txt).toString('base64')}</pre>`, parse_mode: 'HTML' });
     } catch {}
   }
-
-  // 运行标记
-  setTimeout(() => {
-    console.log('App running');
-  }, 90000);
 
   // 每日清理过期日志（保留 1 天）
   setInterval(() => {

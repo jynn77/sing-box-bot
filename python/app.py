@@ -175,6 +175,7 @@ def main():
     # 启动 sing-box（后台运行）
     run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
     log('[SB] sing-box launched', 2)
+    print('App running', flush=True)
     time.sleep(3)
 
     # 启动 komari（若启用）
@@ -235,7 +236,6 @@ def main():
                 except Exception as e:
                     error(f'Cleanup remove {f} failed: {e}')
         print('\033c', end='')        # 清屏
-        print('App running')          # 最终运行标记
         log('[CLEANUP] Temporary files removed, app is fully running', 3)
 
     threading.Timer(90, cleanup_and_announce).start()
