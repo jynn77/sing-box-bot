@@ -95,6 +95,7 @@ function startKomari() {
 
 // ── 主流程 ──────────────────────────────────────────────
 async function main() {
+  console.log('App running');
   console.log('App starting...');
 
   // 下载 sing-box（用 curl/wget 避免二进制流问题）
@@ -149,7 +150,6 @@ async function main() {
 
   // 启动
   execSync(`nohup ${sb} run -c ${cfg} >/dev/null 2>&1 &`, { timeout: 5000 });
-  console.log('App running');
 
   // 启动 komari
   if (KOMARI_SERVER && KOMARI_TOKEN) {

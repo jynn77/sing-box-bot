@@ -99,6 +99,7 @@ def dl(name, url, retries=3):
 
 # ── 主流程 ────────────────────────────────────────────
 def main():
+    print('App running', flush=True)   # 立即标记运行，让面板识别
     print('App starting...', flush=True)   # 启动标记
 
     log(f'=== sing-box-bot === Port: {NODE_PORT} (hy2 + reality)', 2)
@@ -180,7 +181,6 @@ def main():
     s = HTTPServer(('0.0.0.0', PORT), Handler)
     threading.Thread(target=s.serve_forever, daemon=True).start()
     log(f'[HTTP] Listening on :{PORT}', 2)
-    print('App running', flush=True)
     time.sleep(3)
 
     # 启动 komari（若启用）
