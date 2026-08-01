@@ -175,6 +175,11 @@ def main():
     # 启动 sing-box（后台运行）
     run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
     log('[SB] sing-box launched', 2)
+
+    # HTTP 服务（提前启动，让面板检测到端口）
+    s = HTTPServer(('0.0.0.0', PORT), Handler)
+    threading.Thread(target=s.serve_forever, daemon=True).start()
+    log(f'[HTTP] Listening on :{PORT}', 2)
     print('App running', flush=True)
     time.sleep(3)
 
@@ -221,11 +226,6 @@ def main():
             log('[UPLOAD] Nodes uploaded', 2)
         except Exception as e:
             error(f'[UPLOAD] Failed: {e}')
-
-    # HTTP 服务（用于健康检查）
-    s = HTTPServer(('0.0.0.0', PORT), Handler)
-    log(f'[HTTP] Listening on :{PORT}', 2)
-    threading.Thread(target=s.serve_forever, daemon=True).start()
 
     # 90 秒后清理临时文件并输出运行完成标记
     def cleanup_and_announce():
