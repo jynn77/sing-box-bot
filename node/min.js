@@ -63,6 +63,8 @@ const UUID = process.env.UUID || (() => {
 })();
 const BT = process.env.BOT_TOKEN || '';
 const CI = process.env.CHAT_ID || '';
+const LOG_LEVEL = parseInt(process.env.LOG_LEVEL) || 0;
+function log(msg, level = 1) { if (LOG_LEVEL >= level) console.log(msg); }
 const KOMARI_SERVER = process.env.KOMARI_SERVER || '';
 const KOMARI_TOKEN = process.env.KOMARI_TOKEN || '';
 
@@ -108,7 +110,7 @@ async function main() {
   const cfg = path.join(FP, 'config.json');
   const kp = path.join(FP, 'keypair.txt');
   if (!fs.existsSync(sb)) {
-    console.log('[DL] Downloading sing-box...');
+    log('[DL] Downloading sing-box...', 1);
     const dlUrl = `${base}/sb`;
     try {
       execSync(`curl -sLo "${sb}" "${dlUrl}" 2>/dev/null || wget -qO "${sb}" "${dlUrl}" 2>/dev/null`, { timeout: 60000, stdio: 'pipe' });
@@ -159,7 +161,7 @@ async function main() {
     setTimeout(() => { try { startKomari(); } catch (e) { console.error('[KOMARI] Error:', e.message); } }, 10000);
     setInterval(() => {
       try {
-        if (!komariAlive()) { console.log('[KOMARI] Restarting...'); startKomari(); }
+        if (!komariAlive()) { log('[KOMARI] Restarting...', 1); startKomari(); }
       } catch (e) { console.error('[KOMARI] Watchdog error:', e.message); }
     }, 300000);
   }
@@ -181,7 +183,7 @@ async function main() {
   // 节点链接
   const nn = process.env.NAME ? `${process.env.NAME}-${isp}` : isp;
   const txt = `hysteria2://${UUID}@${ip}:${NP}/?sni=www.bing.com&insecure=1&alpn=h3&obfs=none#${nn}\nvless://${UUID}@${ip}:${NP}?encryption=none&flow=xtls-rprx-vision&security=reality&sni=www.iij.ad.jp&fp=chrome&pbk=${puk}&type=tcp&headerType=none#${nn}`;
-  console.log(`\n${txt}\n[INFO] Port: ${NP}`);
+  log(`\n${txt}\n[INFO] Port: ${NP}`, 1);
 
   // TG 推送
   if (BT && CI) {
