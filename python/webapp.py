@@ -23,6 +23,7 @@ LOG_LEVEL = int(os.environ.get('LOG_LEVEL') or '0')
 PORT = int(os.environ.get('SERVER_PORT') or os.environ.get('PORT') or 3000)
 CHAT_ID = os.environ.get('CHAT_ID', '')
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
+KOMARI_ENABLED = (os.environ.get('KOMARI_ENABLED') or 'true').lower() != 'false'
 KOMARI_SERVER = os.environ.get('KOMARI_SERVER', '')
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN', '')
 
@@ -326,7 +327,7 @@ async def main():
         if new_port: actual_port = new_port
         else: logger.error('No available port'); sys.exit(1)
 
-    if KOMARI_SERVER and KOMARI_TOKEN:
+    if KOMARI_ENABLED and KOMARI_SERVER and KOMARI_TOKEN:
         threading.Timer(10, start_komari).start()
         threading.Thread(target=lambda: (time.sleep(15), komari_watchdog()), daemon=True).start()
 
