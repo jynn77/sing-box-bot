@@ -5,8 +5,9 @@ import os, sys, socket, struct, hashlib, base64, asyncio, aiohttp, logging, ipad
 from aiohttp import web
 from pathlib import Path
 
-# ── 从 .env 加载 ──────────────────────────────────────
+# ── 从 .env 加载（优先脚本目录，其次运行目录） ──────────
 _env = Path(__file__).parent / '.env'
+if not _env.exists(): _env = Path('.env')
 if _env.exists():
     for l in _env.read_text().split('\n'):
         m = re.match(r'^\s*([^#=]+)=(.*)', l.strip())
