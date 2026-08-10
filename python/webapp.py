@@ -219,7 +219,7 @@ class ProxyHandler:
             if rh != h1 and rh != h2: return False
             offset = 58 if msg[56:58] == b'\r\n' else 56
             if msg[offset] != 1: return False; offset += 1
-            host, offset = self._parse_addr(msg, offset + 1)
+            host, offset = self._parse_addr(msg, offset)
             if not host: return False
             port = struct.unpack('!H', msg[offset:offset+2])[0]; offset += 2
             if msg[offset:offset+2] == b'\r\n': offset += 2
