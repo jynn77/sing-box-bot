@@ -142,6 +142,10 @@ def start_komari():
     logger.info('[KOMARI] Started')
 
 def komari_alive():
+    kp = os.path.join(FILE_PATH, 'komori')
+    kl = os.path.join(FILE_PATH, 'komori.log')
+    if not os.path.exists(kp): return False
+    if os.path.exists(kl) and time.time() - os.path.getmtime(kl) < 600: return True
     try:
         subprocess.run(['pgrep', '-f', 'komori'], capture_output=True, check=True, timeout=5)
         return True
