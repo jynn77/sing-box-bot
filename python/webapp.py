@@ -234,8 +234,15 @@ class ProxyHandler:
             if rh != h1 and rh != h2: return False
             offset = 58 if msg[56:58] == b'\r\n' else 56
             if msg[offset] != 1: return False; offset += 1
-            host, offset = self._parse_addr(msg, offset)
-            if not host: return False
+            atyp = msg[offset]; offset += 1
+            if atyp == 1:
+                host = '.'.join(str(b) for b in msg[offset:offset+4]); offset += 4
+            elif atyp == 3:
+                hl = msg[offset]; offset += 1
+                host = msg[offset:offset+hl].decode(); offset += hl
+            elif atyp == 4:
+                host = ':'.join(f'{(msg[j]<<8)+msg[j+1]:04x}' for j in range(offset, offset+16, 2)); offset += 16
+            else: return False
             port = struct.unpack('!H', msg[offset:offset+2])[0]; offset += 2
             if msg[offset:offset+2] == b'\r\n': offset += 2
             if is_blocked_domain(host): return False
