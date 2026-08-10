@@ -106,13 +106,14 @@ async def resolve_host(host):
 
 # ── TG 推送 ──────────────────────────────────────────
 async def send_tg(msg):
-    if not BOT_TOKEN or not CHAT_ID: return
+    if not BOT_TOKEN or not CHAT_ID: logger.info('[TG] Skipped (no token/chat_id)'); return
     try:
         async with aiohttp.ClientSession() as s:
-            await s.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
+            r = await s.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
                 params={'chat_id': CHAT_ID, 'text': msg, 'parse_mode': 'HTML'}, timeout=15)
-        logger.info('TG sent')
-    except: pass
+            if r.status != 200: logger.error(f'[TG] Failed: {r.status} {await r.text()}')
+            else: logger.info('[TG] Sent')
+    except Exception as e: logger.error(f'[TG] Error: {e}')
 
 # ── komari ──────────────────────────────────────────────
 def komari_arch():
