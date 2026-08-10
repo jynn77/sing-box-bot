@@ -10,6 +10,7 @@
 | `python/app_max.py` | Python 全功能版：直连 + Argo 隧道 + komari |
 | `node/index.js` | Node.js 标准版：hy2 + reality 直连 + komari（需 npm install） |
 | `node/min.js` | Node.js 最小版：零依赖，hy2 + reality 直连 + komari |
+| `python/webapp.py` | Python 纯代理版：VLESS/Trojan/SS WebSocket，零二进制依赖 + komari |
 | `python/argo.py` | Python Argo 版：仅 Argo 隧道 + 多协议 WS（基于 eooce） |
 
 ---
@@ -51,6 +52,15 @@ cd node
 npm install
 cp .env.example .env
 node index.js
+```
+
+### Python 纯代理版（零二进制）
+
+```bash
+cd python
+pip install aiohttp
+cp .env.example .env
+python webapp.py
 ```
 
 ---
@@ -131,6 +141,7 @@ sing-box-bot/
 ├── python/
 │   ├── app.py          # 标准版（直连）
 │   ├── app_max.py      # 全功能版（直连 + Argo）
+│   ├── webapp.py       # 纯代理版（VLESS/Trojan/SS，零二进制）
 │   ├── argo.py         # Argo 隧道版
 │   ├── requirements.txt
 │   └── .env.example
