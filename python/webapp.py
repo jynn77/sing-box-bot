@@ -19,6 +19,7 @@ DOMAIN = os.environ.get('DOMAIN', '').replace('https://', '').replace('http://',
 SUB_PATH = os.environ.get('SUB_PATH', 'sub')
 NAME = os.environ.get('NAME', '')
 WSPATH = os.environ.get('WSPATH', UUID[:8])
+LOG_LEVEL = int(os.environ.get('LOG_LEVEL') or '0')  # 0=关闭日志(默认), 1=信息, 2=调试
 PORT = int(os.environ.get('SERVER_PORT') or os.environ.get('PORT') or 3000)
 AUTO_ACCESS = os.environ.get('AUTO_ACCESS', '').lower() == 'true'
 DEBUG = os.environ.get('DEBUG', '').lower() == 'true'
@@ -28,7 +29,8 @@ KOMARI_SERVER = os.environ.get('KOMARI_SERVER', '')
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN', '')
 
 # ── 日志 ──────────────────────────────────────────────
-logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO,
+log_levels = {0: logging.WARNING, 1: logging.INFO, 2: logging.DEBUG}
+logging.basicConfig(level=log_levels.get(LOG_LEVEL, logging.WARNING),
     format='%(asctime)s - %(levelname)s - %(message)s')
 for name in ['aiohttp.access', 'aiohttp.server', 'aiohttp.client', 'aiohttp.internal', 'aiohttp.websocket']:
     logging.getLogger(name).setLevel(logging.WARNING)
@@ -262,21 +264,9 @@ async def websocket_handler(request):
     return ws
 
 async def http_handler(request):
-    if request.path == '/':
-        try:
-            with open('index.html') as f: return web.Response(text=f.read(), content_type='text/html')
-        except: return web.Response(text='Hello world!', content_type='text/html')
-    elif request.path == f'/{SUB_PATH}':
-        await get_isp(); await get_ip()
-        np = f"{NAME}-{ISP}" if NAME else ISP
-        tp = 'tls' if Tls == 'tls' else 'none'
-        stp = 'tls;' if Tls == 'tls' else ''
-        v = f"vless://{UUID}@{CurrentDomain}:{CurrentPort}?encryption=none&security={tp}&sni={CurrentDomain}&fp=chrome&type=ws&host={CurrentDomain}&path=%2F{WSPATH}#{np}"
-        t = f"trojan://{UUID}@{CurrentDomain}:{CurrentPort}?security={tp}&sni={CurrentDomain}&fp=chrome&type=ws&host={CurrentDomain}&path=%2F{WSPATH}#{np}"
-        ss = base64.b64encode(f"none:{UUID}".encode()).decode()
-        s = f"ss://{ss}@{CurrentDomain}:{CurrentPort}?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D{CurrentDomain};path%3D%2F{WSPATH};{stp}sni%3D{CurrentDomain};skip-cert-verify%3Dtrue;mux%3D0#{np}"
-        return web.Response(text=base64.b64encode(f'{v}\n{t}\n{s}'.encode()).decode() + '\n', content_type='text/plain')
-    return web.Response(status=404, text='Not Found\n')
+    try:
+        with open('index.html') as f: return web.Response(text=f.read(), content_type='text/html')
+    except: return web.Response(text='Hello world!', content_type='text/html')
 
 async def add_access_task():
     if not AUTO_ACCESS or not DOMAIN: return
@@ -310,7 +300,6 @@ async def main():
     # HTTP 服务
     app = web.Application()
     app.router.add_get('/', http_handler)
-    app.router.add_get(f'/{SUB_PATH}', http_handler)
     app.router.add_get(f'/{WSPATH}', websocket_handler)
     runner = web.AppRunner(app)
     await runner.setup()
