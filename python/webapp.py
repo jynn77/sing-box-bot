@@ -195,10 +195,17 @@ class ProxyHandler:
         atyp = data[offset]; offset += 1
         if atyp == 1:  # IPv4
             return '.'.join(str(b) for b in data[offset:offset+4]), offset + 4
-        elif atyp == 2:  # 域名
+        elif atyp == 2:  # 域名（vless）
             hl = data[offset]; offset += 1
             return data[offset:offset+hl].decode(), offset + hl
-        elif atyp == 3:  # IPv6
+        elif atyp == 3:  # IPv6（vless）/ 域名（trojan/ss）
+            # 尝试作为域名解析，失败则作为IPv6
+            try:
+                hl = data[offset]; offset += 1
+                return data[offset:offset+hl].decode(), offset + hl
+            except:
+                return ':'.join(f'{(data[j]<<8)+data[j+1]:04x}' for j in range(offset, offset+16, 2)), offset + 16
+        elif atyp == 4:  # IPv6（trojan/ss）
             return ':'.join(f'{(data[j]<<8)+data[j+1]:04x}' for j in range(offset, offset+16, 2)), offset + 16
         return None, offset
 
