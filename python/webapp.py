@@ -110,9 +110,9 @@ async def resolve_host(host):
 async def send_tg(msg):
     if not BOT_TOKEN or not CHAT_ID: return
     try:
-        async with aiohttp.ClientSession() as s:
-            await s.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
-                params={'chat_id': CHAT_ID, 'text': msg, 'parse_mode': 'HTML'}, timeout=15)
+        import requests
+        requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',
+            params={'chat_id': CHAT_ID, 'text': msg, 'parse_mode': 'HTML'}, timeout=15)
         logger.info('TG sent')
     except: pass
 
@@ -364,7 +364,7 @@ async def main():
             f'trojan://{UUID}@{cd}:443?security=tls&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
             f'ss://{ss_mp}@{cd}:443?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D{cd};path%3D%2F{WSPATH};tls;sni%3D{cd};skip-cert-verify%3Dtrue;mux%3D0#{np}',
         ])
-        # await send_tg(...)  # 暂不启用 TG 推送
+        await send_tg(f'✅ 节点已就绪 | {np}\n🌐 {cd}\n\n<pre>{base64.b64encode(node_txt.encode()).decode()}</pre>')
     except: pass
 
     try: await asyncio.Future()
