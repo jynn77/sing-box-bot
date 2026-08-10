@@ -15,7 +15,7 @@ if _env.exists():
 # ── 环境变量 ──────────────────────────────────────────
 FILE_PATH = os.environ.get('FILE_PATH', '.cache')
 UUID = os.environ.get('UUID') or (lambda f: open(f).read().strip() if os.path.exists(f) else None)(os.path.join(FILE_PATH, 'uuid.txt')) or str(uuid.uuid4())
-DOMAIN = os.environ.get('DOMAIN', '')
+DOMAIN = os.environ.get('DOMAIN', '').replace('https://', '').replace('http://', '').rstrip('/')
 SUB_PATH = os.environ.get('SUB_PATH', 'sub')
 NAME = os.environ.get('NAME', '')
 WSPATH = os.environ.get('WSPATH', UUID[:8])
