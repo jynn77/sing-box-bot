@@ -148,6 +148,11 @@ def komari_alive():
         return True
     except: pass
     try:
+        # 若二进制存在且日志在更新，视为运行中
+        kp = os.path.join(FILE_PATH, 'komori')
+        kl = os.path.join(FILE_PATH, 'komori.log')
+        if os.path.exists(kp) and os.path.exists(kl):
+            return True
         r = subprocess.run(['ps', 'aux'], capture_output=True, text=True, timeout=5)
         return 'komori' in r.stdout
     except: return True
