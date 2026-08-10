@@ -318,7 +318,8 @@ async def main():
     # TG 推送
     try:
         await get_isp()
-        cd = DOMAIN or '127.0.0.1'
+        await get_ip()
+        cd = CurrentDomain
         np = f'{NAME}-{ISP}' if NAME else ISP
         ss_mp = base64.b64encode(f'none:{UUID}'.encode()).decode()
         node_txt = '\n'.join([
