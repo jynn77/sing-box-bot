@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """webapp - 纯 Python WebSocket 代理（VLESS/Trojan/SS）+ komari"""
-import os, sys, socket, struct, hashlib, base64, asyncio, aiohttp, logging, ipaddress, subprocess, threading, re, time, platform, urllib.request, stat
+import os, sys, socket, struct, hashlib, base64, asyncio, aiohttp, logging, ipaddress, subprocess, threading, re, time, platform, urllib.request, stat, uuid
 from aiohttp import web
 from pathlib import Path
 
@@ -13,7 +13,8 @@ if _env.exists():
         if m: os.environ.setdefault(m.group(1).strip(), m.group(2).strip().strip('"\''))
 
 # ── 环境变量 ──────────────────────────────────────────
-UUID = os.environ.get('UUID', '5959149a-fe2c-474a-a28d-fdf01e254cc4')
+FILE_PATH = os.environ.get('FILE_PATH', '.cache')
+UUID = os.environ.get('UUID') or (lambda f: open(f).read().strip() if os.path.exists(f) else None)(os.path.join(FILE_PATH, 'uuid.txt')) or str(uuid.uuid4())
 DOMAIN = os.environ.get('DOMAIN', '')
 SUB_PATH = os.environ.get('SUB_PATH', 'sub')
 NAME = os.environ.get('NAME', '')
@@ -25,7 +26,6 @@ CHAT_ID = os.environ.get('CHAT_ID', '')
 BOT_TOKEN = os.environ.get('BOT_TOKEN', '')
 KOMARI_SERVER = os.environ.get('KOMARI_SERVER', '')
 KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN', '')
-FILE_PATH = os.environ.get('FILE_PATH', '.cache')
 
 # ── 日志 ──────────────────────────────────────────────
 logging.basicConfig(level=logging.DEBUG if DEBUG else logging.INFO,
@@ -289,6 +289,11 @@ async def add_access_task():
 # ── 主流程 ────────────────────────────────────────────
 async def main():
     print('App running')
+    os.makedirs(FILE_PATH, exist_ok=True)
+    # UUID 持久化
+    uf = os.path.join(FILE_PATH, 'uuid.txt')
+    if not os.path.exists(uf):
+        with open(uf, 'w') as f: f.write(UUID)
     actual_port = PORT
     if not is_port_available(actual_port):
         new_port = find_available_port(actual_port + 1)
