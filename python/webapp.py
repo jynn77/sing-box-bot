@@ -247,8 +247,24 @@ class ProxyHandler:
             if msg[offset:offset+2] == b'\r\n': offset += 2
             if is_blocked_domain(host): return False
             rh = await resolve_host(host)
-            r, w = await asyncio.open_connection(rh, port)
-            await self._forward(ws, w, r, msg, offset)
+            try:
+                r, w = await asyncio.open_connection(rh, port)
+                if offset < len(msg): w.write(msg[offset:]); await w.drain()
+                async def fwd_ws():
+                    try:
+                        async for m in ws:
+                            if m.type == aiohttp.WSMsgType.BINARY: w.write(m.data); await w.drain()
+                    except: pass
+                    finally: w.close(); await w.wait_closed()
+                async def fwd_tcp():
+                    try:
+                        while True:
+                            d = await r.read(4096)
+                            if not d: break
+                            await ws.send_bytes(d)
+                    except: pass
+                await asyncio.gather(fwd_ws(), fwd_tcp())
+            except: pass
             return True
         except: return False
 
