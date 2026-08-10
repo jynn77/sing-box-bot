@@ -290,6 +290,7 @@ async def add_access_task():
 # ── 主流程 ────────────────────────────────────────────
 async def main():
     print('App running')
+    logger.info(f'[CFG] BOT_TOKEN={"set" if BOT_TOKEN else "unset"}, CHAT_ID={"set" if CHAT_ID else "unset"}, DOMAIN={DOMAIN or "unset"}')
     os.makedirs(FILE_PATH, exist_ok=True)
     # UUID 持久化
     uf = os.path.join(FILE_PATH, 'uuid.txt')
@@ -318,8 +319,10 @@ async def main():
 
     # TG 推送
     try:
+        logger.info('[TG] Preparing...')
         await get_isp()
         await get_ip()
+        logger.info(f'[TG] Domain={CurrentDomain}, ISP={ISP}')
         cd = CurrentDomain
         np = f'{NAME}-{ISP}' if NAME else ISP
         ss_mp = base64.b64encode(f'none:{UUID}'.encode()).decode()
