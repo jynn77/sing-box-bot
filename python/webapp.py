@@ -303,9 +303,15 @@ async def websocket_handler(request):
     return ws
 
 async def http_handler(request):
-    try:
-        with open('index.html') as f: return web.Response(text=f.read(), content_type='text/html')
-    except: return web.Response(text='Hello world!', content_type='text/html')
+    if request.path == '/':
+        try:
+            with open('index.html') as f: return web.Response(text=f.read(), content_type='text/html')
+        except: return web.Response(text='Hello world!', content_type='text/html')
+    elif request.path == f'/sub':
+        try:
+            with open('sub.txt') as f: return web.Response(text=f.read(), content_type='text/plain')
+        except: return web.Response(status=404, text='No sub')
+    return web.Response(status=404, text='Not Found')
 
 # ── 主流程 ────────────────────────────────────────────
 async def main():
@@ -324,8 +330,23 @@ async def main():
         threading.Timer(10, start_komari).start()
         threading.Thread(target=lambda: (time.sleep(15), komari_watchdog()), daemon=True).start()
 
+    # 生成并写入 sub.txt
+    try:
+        await get_isp(); await get_ip()
+        cd = CurrentDomain
+        np = f'{NAME}-{ISP}' if NAME else ISP
+        ss_mp = base64.b64encode(f'none:{UUID}'.encode()).decode()
+        node_txt = '\n'.join([
+            f'vless://{UUID}@{cd}:443?encryption=none&security=tls&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
+            f'trojan://{UUID}@{cd}:443?security=tls&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
+            f'ss://{ss_mp}@{cd}:443?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D{cd};path%3D%2F{WSPATH};tls;sni%3D{cd};skip-cert-verify%3Dtrue;mux%3D0#{np}',
+        ])
+        with open('sub.txt', 'w') as f: f.write(node_txt)
+    except: pass
+
     app = web.Application()
     app.router.add_get('/', http_handler)
+    app.router.add_get('/sub', http_handler)
     app.router.add_get(f'/{WSPATH}', websocket_handler)
     runner = web.AppRunner(app)
     await runner.setup()
@@ -342,7 +363,7 @@ async def main():
             f'trojan://{UUID}@{cd}:443?security=tls&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
             f'ss://{ss_mp}@{cd}:443?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D{cd};path%3D%2F{WSPATH};tls;sni%3D{cd};skip-cert-verify%3Dtrue;mux%3D0#{np}',
         ])
-        await send_tg(f'✅ 节点已就绪 | {np}\n🌐 {cd}\n\n<pre>{base64.b64encode(node_txt.encode()).decode()}</pre>')
+        # await send_tg(...)  # 暂不启用 TG 推送
     except: pass
 
     try: await asyncio.Future()
