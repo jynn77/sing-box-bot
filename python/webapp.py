@@ -315,19 +315,20 @@ async def main():
     await web.TCPSite(runner, '0.0.0.0', actual_port).start()
     logger.info(f'✅ server running on port {actual_port}')
 
-    # TG 推送（实际节点链接）
-    await get_isp()
-    cd = DOMAIN or '127.0.0.1'
-    cp = '443'
-    tp = 'tls'
-    np = f'{NAME}-{ISP}' if NAME else ISP
-    ss_mp = base64.b64encode(f'none:{UUID}'.encode()).decode()
-    node_txt = '\n'.join([
-        f'vless://{UUID}@{cd}:{cp}?encryption=none&security={tp}&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
-        f'trojan://{UUID}@{cd}:{cp}?security={tp}&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
-        f'ss://{ss_mp}@{cd}:{cp}?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D{cd};path%3D%2F{WSPATH};{tp};sni%3D{cd};skip-cert-verify%3Dtrue;mux%3D0#{np}',
-    ])
-    await send_tg(f'✅ 节点已就绪 | {np}\n🌐 {cd}\n\n<pre>{base64.b64encode(node_txt.encode()).decode()}</pre>')
+    # TG 推送
+    try:
+        await get_isp()
+        cd = DOMAIN or '127.0.0.1'
+        np = f'{NAME}-{ISP}' if NAME else ISP
+        ss_mp = base64.b64encode(f'none:{UUID}'.encode()).decode()
+        node_txt = '\n'.join([
+            f'vless://{UUID}@{cd}:443?encryption=none&security=tls&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
+            f'trojan://{UUID}@{cd}:443?security=tls&sni={cd}&fp=chrome&type=ws&host={cd}&path=%2F{WSPATH}#{np}',
+            f'ss://{ss_mp}@{cd}:443?plugin=v2ray-plugin;mode%3Dwebsocket;host%3D{cd};path%3D%2F{WSPATH};tls;sni%3D{cd};skip-cert-verify%3Dtrue;mux%3D0#{np}',
+        ])
+        await send_tg(f'✅ 节点已就绪 | {np}\n🌐 {cd}\n\n<pre>{base64.b64encode(node_txt.encode()).decode()}</pre>')
+    except Exception as e:
+        logger.error(f'[TG] Error: {e}')
 
     await add_access_task()
     try: await asyncio.Future()
