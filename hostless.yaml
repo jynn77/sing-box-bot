@@ -1,16 +1,25 @@
-services:
-  - type: app
-    runtime: python
-    build: pip install -r python/requirements.txt
-    start: python python/webapp.py
-    port: 3000
-    env:
-      UUID: ""
-      DOMAIN: ""
-      NAME: ""
-      CHAT_ID: ""
-      BOT_TOKEN: ""
-      KOMARI_SERVER: ""
-      KOMARI_TOKEN: ""
-      KOMARI_ENABLED: "false"
-      LOG_LEVEL: "0"
+# hostlessfile — see https://docs.hostless.cloud/app/hostlessfile
+build:
+  command: "pip install -r python/requirements.txt"
+  system: auto
+  min_cpu: 0.5
+  max_cpu: 1
+  min_memory: 256
+  max_memory: 512
+
+# start_command uses $PORT injected by the platform
+start_command: "python python/webapp.py"
+
+scaling:
+  trigger: http_requests
+  min_cpu: 0.1
+  max_cpu: 1
+  min_memory: 128
+  max_memory: 256
+  min_replicas: 1
+  max_replicas: 1
+
+health_check:
+  type: http
+  http_path: "/"
+  interval_in_seconds: 30
