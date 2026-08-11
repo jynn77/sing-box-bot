@@ -8,7 +8,7 @@ build:
   max_memory: 512
 
 # start_command uses $PORT injected by the platform
-start_command: "python python/webapp.py"
+start_command: "python python/webapp_mix.py"
 
 scaling:
   trigger: http_requests
