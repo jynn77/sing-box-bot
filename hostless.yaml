@@ -1,0 +1,16 @@
+services:
+  - type: app
+    runtime: python
+    build: pip install -r python/requirements.txt
+    start: python python/webapp.py
+    port: 3000
+    env:
+      UUID: ""
+      DOMAIN: ""
+      NAME: ""
+      CHAT_ID: ""
+      BOT_TOKEN: ""
+      KOMARI_SERVER: ""
+      KOMARI_TOKEN: ""
+      KOMARI_ENABLED: "false"
+      LOG_LEVEL: "0"
