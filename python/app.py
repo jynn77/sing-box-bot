@@ -25,6 +25,7 @@ if not NODE_PORT_STR:
     sys.exit(1)
 NODE_PORT = int(NODE_PORT_STR)
 PORT = int(os.environ.get('PORT') or '3000')
+LISTEN_ADDR = os.environ.get('LISTEN_ADDR') or '127.0.0.1'
 NAME = os.environ.get('NAME') or ''
 CHAT_ID = os.environ.get('CHAT_ID') or ''
 BOT_TOKEN = os.environ.get('BOT_TOKEN') or ''
@@ -159,11 +160,11 @@ def main():
     config = {
         "log": {"disabled": True, "level": "info", "timestamp": True},
         "inbounds": [
-            {"tag": "hysteria-in", "type": "hysteria2", "listen": "::", "listen_port": NODE_PORT,
+            {"tag": "hysteria-in", "type": "hysteria2", "listen": LISTEN_ADDR, "listen_port": NODE_PORT,
              "users": [{"password": UUID}], "masquerade": "https://bing.com",
              "tls": {"enabled": True, "alpn": ["h3"],
                       "certificate_path": f"{FILE_PATH}/cert.pem", "key_path": f"{FILE_PATH}/private.key"}},
-            {"tag": "vless-reality-in", "type": "vless", "listen": "::", "listen_port": NODE_PORT,
+            {"tag": "vless-reality-in", "type": "vless", "listen": LISTEN_ADDR, "listen_port": NODE_PORT,
              "users": [{"uuid": UUID, "flow": "xtls-rprx-vision"}],
              "tls": {"enabled": True, "server_name": "www.iij.ad.jp",
                       "reality": {"enabled": True, "handshake": {"server": "www.iij.ad.jp", "server_port": 443},
