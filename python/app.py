@@ -26,6 +26,7 @@ if not NODE_PORT_STR:
 NODE_PORT = int(NODE_PORT_STR)
 PORT = int(os.environ.get('PORT') or '3000')
 LISTEN_ADDR = os.environ.get('LISTEN_ADDR') or '127.0.0.1'
+SB_LOG = (os.environ.get('SB_LOG') or 'false').lower() == 'true'
 NAME = os.environ.get('NAME') or ''
 CHAT_ID = os.environ.get('CHAT_ID') or ''
 BOT_TOKEN = os.environ.get('BOT_TOKEN') or ''
@@ -158,7 +159,7 @@ def main():
 
     # 写入配置
     config = {
-        "log": {"disabled": True, "level": "info", "timestamp": True},
+        "log": {"disabled": not SB_LOG, "level": "info", "timestamp": True} if SB_LOG else {"disabled": True},
         "inbounds": [
             {"tag": "hysteria-in", "type": "hysteria2", "listen": LISTEN_ADDR, "listen_port": NODE_PORT,
              "users": [{"password": UUID}], "masquerade": "https://bing.com",
@@ -175,7 +176,8 @@ def main():
     log('[CONFIG] Generated', 2)
 
     # 启动 sing-box（后台运行）
-    run(f'nohup {web_path} run -c {config_path} >/dev/null 2>&1 &')
+    log_file = f'{FILE_PATH}/sb.log' if SB_LOG else '/dev/null'
+    run(f'nohup {web_path} run -c {config_path} >{log_file} 2>&1 &')
     log('[SB] sing-box launched', 2)
 
     # HTTP 服务（提前启动，让面板检测到端口）
