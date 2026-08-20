@@ -161,11 +161,11 @@ def main():
     config = {
         "log": {"disabled": not SB_LOG, "level": "info", "timestamp": True} if SB_LOG else {"disabled": True},
         "inbounds": [
-            {"tag": "hysteria-in", "type": "hysteria2", "listen": LISTEN_ADDR, "listen_port": NODE_PORT,
+            {"tag": "hysteria-in", "type": "hysteria2", "listen": "::", "listen_port": NODE_PORT,
              "users": [{"password": UUID}], "masquerade": "https://bing.com",
              "tls": {"enabled": True, "alpn": ["h3"],
                       "certificate_path": f"{FILE_PATH}/cert.pem", "key_path": f"{FILE_PATH}/private.key"}},
-            {"tag": "vless-reality-in", "type": "vless", "listen": LISTEN_ADDR, "listen_port": NODE_PORT,
+            {"tag": "vless-reality-in", "type": "vless", "listen": "::", "listen_port": NODE_PORT,
              "users": [{"uuid": UUID, "flow": "xtls-rprx-vision"}],
              "tls": {"enabled": True, "server_name": "www.iij.ad.jp",
                       "reality": {"enabled": True, "handshake": {"server": "www.iij.ad.jp", "server_port": 443},
