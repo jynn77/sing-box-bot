@@ -37,7 +37,7 @@ KOMARI_TOKEN = os.environ.get('KOMARI_TOKEN') or ''
 ARGO_DOMAIN = os.environ.get('ARGO_DOMAIN') or ''
 ARGO_AUTH = os.environ.get('ARGO_AUTH') or ''
 ARGO_PORT = int(os.environ.get('ARGO_PORT') or '8001')
-CFIP = os.environ.get('CFIP') or 'spring.io'
+CFIP = os.environ.get('CFIP') or 'mfa.gov.ua'
 CFPORT = int(os.environ.get('CFPORT') or '443')
 
 # ── 路径 ──────────────────────────────────────────────
