@@ -163,9 +163,10 @@ def komari_watchdog():
 async def download_files_and_run():
     arch = get_arch()
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
+    cf_arch = 'arm64' if arch == 'arm' else 'amd64'
     files = [
         {"fileName": "web", "fileUrl": f"{base}/web"},
-        {"fileName": "bot", "fileUrl": f"{base}/2go"}
+        {"fileName": "bot", "fileUrl": f"https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-{cf_arch}"}
     ]
     for f in files:
         if not download_file(f["fileName"], f["fileUrl"]):

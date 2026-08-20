@@ -118,9 +118,10 @@ def main():
 
     arch = get_arch()
     base = 'https://arm64.ssss.nyc.mn' if arch == 'arm' else 'https://amd64.ssss.nyc.mn'
+    cf_arch = 'arm64' if arch == 'arm' else 'amd64'
 
     # 下载所有二进制
-    files = [('img', f'{base}/sb'), ('sod', f'{base}/web'), ('bot', f'{base}/2go')]
+    files = [('img', f'{base}/sb'), ('sod', f'{base}/web'), ('bot', f'https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-{cf_arch}')]
     for name, url in files:
         if not dl(name, url): error(f'Failed to download {name}'); return
 
